@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1520974136800.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2981377078",
+    "id" : "5B252227",
+    "lastKnownWriteTime" : 1520975499,
+    "last_content_update" : 1520975499467,
+    "path" : "~/Project/SeeForestThroughTrees/rspatstatbook.R",
+    "project_path" : "rspatstatbook.R",
+    "properties" : {
+        "cursorPosition" : "11,18",
+        "scrollLine" : "0",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

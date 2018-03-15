@@ -1,0 +1,35 @@
+library(raster)
+
+
+# Get db with species codes
+# As a note, I manually removed id 299, 915, 998, and 999 because
+# they're for dead trees
+db <- read.csv("data/summary_table_all.csv")
+db$id <- paste0("s", db$spp_code, ".img")
+genera <- unique(db$genus_name)
+id <- db$id
+file.list <- list.files(path = "./data/", pattern = ".img", full.names = T)
+
+f1 <- raster("data/s90.img")
+f2 <- raster("data/s91.img")
+f3 <- raster("data/s93.img")
+f4 <- raster("data/s94.img")
+f5 <- raster("data/s95.img")
+f6 <- raster("data/s96.img")
+f7 <- raster("data/s97.img")
+f8 <- raster("data/s98.img")
+
+split1 <- unlist(strsplit(file.list, "a/"))
+split1 <- split1[seq(from = 2, to = length(split1), by = 2)]
+fir.id <- db$id[db$genus_name == "Picea"]
+fir.id <- as.character(fir.id)
+index <- grep(paste(t, collapse = "|"), split1)
+file.list[index]
+rasters <- lapply(file.list[index], raster)
+rasters <- rasters[2:8]
+test <-  do.call(merge, rasters)
+
+for (i in file.list[index]) {
+  
+}
+

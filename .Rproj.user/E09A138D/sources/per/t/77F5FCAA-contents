@@ -141,8 +141,13 @@ test <- wi.white.oak
 test[test == 0] <- NA
 avg.wi.white.oak <- cellStats(test, stat = "mean")
 
-### Total BA by state
+### Genus rasters
 
+
+### Total BA by state - will want to get a script running and let this calculate on its own
+# then create a csv for it.
+cellStats(white.oak, stat = "sum")
+cellStats(wi.white.oak, stat = "sum")
 
 ### Database linking file name to species name
 db <- read.csv("data/summary_table_all.csv")
@@ -153,7 +158,6 @@ test <- raster(paste0("data/s", input, ".img"))
 
 ### For multiple species, proportional bar charts showing basal area (total or average?)
 
-### Genus rasters
 
 
 

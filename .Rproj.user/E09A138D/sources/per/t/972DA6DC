@@ -1,19 +1,21 @@
 {
     "collab_server" : "",
     "contents" : "",
-    "created" : 1521139253566.000,
+    "created" : 1521146579515.000,
     "dirty" : false,
     "encoding" : "UTF-8",
     "folds" : "",
     "hash" : "2539583185",
-    "id" : "721C2050",
+    "id" : "972DA6DC",
     "lastKnownWriteTime" : 1521035293,
     "last_content_update" : 1521035293,
     "path" : "C:/Users/wittm094/Google Drive/School Work/Grad School/MS Project/Servosphere Project/scripts/analyze.R",
     "project_path" : null,
     "properties" : {
+        "cursorPosition" : "16,16",
+        "scrollLine" : "0"
     },
-    "relative_order" : 2,
+    "relative_order" : 3,
     "source_on_save" : false,
     "source_window" : "",
     "type" : "r_source"

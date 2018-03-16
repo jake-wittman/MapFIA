@@ -18,6 +18,8 @@ usa <- spTransform(usa, CRS(proj4string(white.oak))) # transform shapefile to pr
 contig.usa <- subset(usa, STATE_NAME != "Hawaii" & STATE_NAME != "Alaska") # contig. usa shapefile
 wisconsin <- subset(usa, STATE_NAME == "Wisconsin") 
 mn.wi <- subset(usa, STATE_NAME == "Wisconsin" | STATE_NAME == "Minnesota")
+states <- as.character(unique(contig.usa$STATE_NAME))
+arizona <- subset(contig.usa, STATE_NAME == "Arizona")
 
 #### See raster info
 white.oak
@@ -146,8 +148,35 @@ avg.wi.white.oak <- cellStats(test, stat = "mean")
 
 ### Total BA by state - will want to get a script running and let this calculate on its own
 # then create a csv for it.
-cellStats(white.oak, stat = "sum")
-cellStats(wi.white.oak, stat = "sum")
+db <- read.csv("data/summary_table_all.csv")
+db$id <- paste0("s", db$spp_code, ".img")
+genera <- unique(db$genus_name)
+id <- db$id
+file.list <- list.files(path = "./data/", pattern = ".img", full.names = T)
+# The combined spp files are not done yet, so remove them from file list
+tree.id <- db$spp_code
+tree.id <- as.character(tree.id)
+index <- grep(paste(tree.id, collapse = "|"), split1)
+file.list[index]
+list.rasters <- lapply(file.list[index], raster)
+cellStats(mask(crop(white.oak, extent(wisconsin)), wisconsin), stat = "sum") # can use this so I don't make a bunch of objects
+# Make a list of state shape files
+state.shapes <- lapply(states, function(x) {subset(contig.usa, STATE_NAME == x)})
+names(state.shapes) <- states
+# spp_id <- rep(tree.id, length(states))
+# state_df <- rep(states, length(tree.id))
+# cbind(spp_id, state_df)
+sum.ba <- data.frame(x = tree.id, y = states, z = NA )
+sum.ba$x <- as.character(sum.ba$x)
+StateStats <- function(rasterfile) {
+  for (i in states) {
+    sum.ba$y[sum.ba$x == i] <- cellStats(mask(crop(rasterfile, extent(state.shapes[[paste(i)]])), 
+                                        state.shapes[[paste(i)]]), stat = "sum")
+    print(i)
+  }
+  return(sum.ba)
+}
+
 
 ### Database linking file name to species name
 db <- read.csv("data/summary_table_all.csv")

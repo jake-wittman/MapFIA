@@ -1,4 +1,6 @@
 library(raster)
+library(rgdal)
+library(beepr)
 
 
 # Get db with species codes
@@ -10,26 +12,75 @@ genera <- unique(db$genus_name)
 id <- db$id
 file.list <- list.files(path = "./data/", pattern = ".img", full.names = T)
 
-f1 <- raster("data/s90.img")
-f2 <- raster("data/s91.img")
-f3 <- raster("data/s93.img")
-f4 <- raster("data/s94.img")
-f5 <- raster("data/s95.img")
-f6 <- raster("data/s96.img")
-f7 <- raster("data/s97.img")
-f8 <- raster("data/s98.img")
-
 split1 <- unlist(strsplit(file.list, "a/"))
 split1 <- split1[seq(from = 2, to = length(split1), by = 2)]
-fir.id <- db$id[db$genus_name == "Picea"]
-fir.id <- as.character(fir.id)
-index <- grep(paste(t, collapse = "|"), split1)
+
+# Start here
+tree.id <- db$id[db$genus_name == "Ulmus" & db$spp_name != "spp." ]
+tree.id <- as.character(tree.id)
+
+index <- grep(paste(tree.id, collapse = "|"), split1)
 file.list[index]
 rasters <- lapply(file.list[index], raster)
-rasters <- rasters[2:8]
-test <-  do.call(merge, rasters)
 
-for (i in file.list[index]) {
-  
+
+for (i in 1:length(rasters)) {
+  if (i == 1){
+    combined <- rasters[[i]]
+  } else {
+    combined <- combined + rasters[[i]]
+  }
 }
+beep(6)
+plot(combined)
+
+
+# CHECK THAT FILE NAME IS RIGHT!!!!!!!!!!!!!!!!!!!!!!!!!
+# STOP AND CHECK RIGHT NOW!!!!!!!!!!!!!!!
+writeRaster(combined, "data/s970.img", overwrite = T, options = "COMPRESSED=YES")
+# The file sizes are too big right now, so I'll come back to this.
+
+# Completed genera
+# Abies
+# Chamaecyparis
+# Juniperus
+# Larix
+# Picea
+# Pinus
+# Taxodium
+# Thuja
+# Tsuga
+# Acer
+# Aesculus
+# Alnus
+# Amelanchier
+# Arbutus
+# Betula
+# Carya
+# Castanea
+# Catalpa
+# Celtis
+# Crataegus
+# Diospyros
+# Fraxinus
+# Gleditsia
+# Halesia
+# Juglans
+# Magnolia
+# Malus
+# Morus
+# Nyssa
+# Populus
+# Prosopis
+# Prunus
+# Quercus
+# Salix
+# Tilia
+# Ulmus
+
+
+
+
+
+
 

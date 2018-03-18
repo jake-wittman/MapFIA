@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1521383919317.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3749430113",
+    "id" : "91B6811B",
+    "lastKnownWriteTime" : 1521321652,
+    "last_content_update" : 1521321652,
+    "path" : "~/MapFIA/merge_rasters.R",
+    "project_path" : "merge_rasters.R",
+    "properties" : {
+        "cursorPosition" : "14,0",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

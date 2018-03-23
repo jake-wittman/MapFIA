@@ -1,9 +1,12 @@
+library(plyr)
+library(doParallel)
 library(raster)
 library(rgdal)
 library(ggplot2)
 library(viridis)
 library(rasterVis)
 library(ggthemes)
+
 
 PlotUSA <- function(raster) {
   plot(raster)
@@ -75,19 +78,17 @@ plot <- gplot(x = white.oak) +
 plot + scale_fill_gradientn(colors = c("white", terrain.colors(5), "black")) + theme_map()
 
 # Summary data
-test <- white.oak
-test[test == 0] <- NA # Converts 0 to NA
-hist(test) # plots much faster this way
 
-system.time(plot(test))
-plot(contig.usa, add = T)
 
 ### Use cellStats to return a single value for analyzing raster data
 # Depending on which version of the dataset I use, get different mean values...
 # Also, doesn't match the summary value from the db
 cellStats(white.oak, stat = "mean")
-cellStats(white.oak[white.oak != 0], stat = "mean") # doesn't work
+test <- white.oak
+test[test == 0] <- NA # Converts 0 to NA
 cellStats(test, stat = "mean")
+hist(test) # plots much faster this way
+
 # After reading the paper about these data (A nearest-neighbor imputation 
 # approach to mapping tree species over large areas using forest inventory 
 # plots and moderate resolution raster data), I think I'll be okay to use
@@ -97,13 +98,6 @@ cellStats(test, stat = "mean")
 # model that was used to generate this data. These distributions are not
 # actual, but estimated based on a model. They're likely inaccurate at the
 # edges of the range and for rarer species.
-
-# Another attempt to get mean to match what it is in summary
-sum <- cellStats(white.oak, stat = "sum")
-non.zero <- getValues(white.oak) 
-count <- sum(non.zero > 0)
-sum/count # same answer as above
-
 
 # I could probably iterate over each state to get summary stuff per state
 
@@ -135,7 +129,7 @@ test <- overlay(red.oak, white.oak, fun = function(r1, r2) { # this works too fo
 })
 PlotUSA(test)
 # If I want to plot whole range of multiple species, I can't remove 0s
-# If I want to show only where they co-occur, should convert 0s to NA (I think...)
+# If I want to show only where they co-occur, should convert 0s to NA
 
 
 ### Calculate mean BA by state and nationwide
@@ -151,32 +145,47 @@ avg.wi.white.oak <- cellStats(test, stat = "mean")
 db <- read.csv("data/summary_table_all.csv")
 db$id <- paste0("s", db$spp_code, ".img")
 genera <- unique(db$genus_name)
-id <- db$id
+spp.id <- db$spp_code
+spp.id <- paste0("s", spp.id)
 file.list <- list.files(path = "./data/", pattern = ".img", full.names = T)
+
 # The combined spp files are not done yet, so remove them from file list
-tree.id <- db$spp_code
-tree.id <- as.character(tree.id)
-index <- grep(paste(tree.id, collapse = "|"), split1)
+spp.id <- as.character(spp.id)
+split1 <- unlist(strsplit(file.list, "a/"))
+split1 <- split1[seq(from = 2, to = length(split1), by = 2)]
+index <- grep(paste(spp.id, collapse = "|"), split1)
 file.list[index]
 list.rasters <- lapply(file.list[index], raster)
-cellStats(mask(crop(white.oak, extent(wisconsin)), wisconsin), stat = "sum") # can use this so I don't make a bunch of objects
+
 # Make a list of state shape files
-state.shapes <- lapply(states, function(x) {subset(contig.usa, STATE_NAME == x)})
+state.shapes <-
+  lapply(states, function(x) {
+    subset(contig.usa, STATE_NAME == x)
+  })
 names(state.shapes) <- states
-# spp_id <- rep(tree.id, length(states))
-# state_df <- rep(states, length(tree.id))
-# cbind(spp_id, state_df)
-sum.ba <- data.frame(x = tree.id, y = states, z = NA )
-sum.ba$x <- as.character(sum.ba$x)
+
+
 StateStats <- function(rasterfile) {
+  sum.ba <- data.frame(
+    x = rep(names(rasterfile), length(states)),
+    y = states,
+    z = NA
+  )
+  colnames(sum.ba) <- c("spp.id", "state", "tot.ba")
+  print(names(rasterfile))
+  test <- lapply(states, function(x) {})
   for (i in states) {
-    sum.ba$y[sum.ba$x == i] <- cellStats(mask(crop(rasterfile, extent(state.shapes[[paste(i)]])), 
-                                        state.shapes[[paste(i)]]), stat = "sum")
+    sum.ba$tot.ba[sum.ba$state == i & sum.ba$spp.id == names(rasterfile)] <-
+      cellStats(mask(crop(rasterfile, extent(state.shapes[[paste(i)]])),
+                     state.shapes[[paste(i)]]), stat = "sum")
     print(i)
   }
+  write.csv(sum.ba, paste0("data/", names(rasterfile), "states_tot_ba.csv"))
   return(sum.ba)
 }
 
+tot.ba <- lapply(list.rasters, StateStats)
+tot.ba <- ldply(tot.ba)
 
 ### Database linking file name to species name
 db <- read.csv("data/summary_table_all.csv")

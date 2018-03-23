@@ -1,0 +1,142 @@
+library(raster)
+library(rgdal)
+library(ggplot2)
+library(shiny)
+
+# Define UI for application that draws a histogram
+ui <- fluidPage(
+
+   # Application title
+   titlePanel("Mapping Tree Distributions"),
+
+   # Sidebar with a slider input for number of bins
+   sidebarLayout(
+      sidebarPanel(
+        uiOutput("scientific"),
+
+        uiOutput("common"),
+
+        selectInput("map",
+                    "Geographic Area to Plot",
+                    choices = states,
+                    multiple = TRUE,
+                    selectize = TRUE),
+
+         numericInput("pixels",
+                     "Number of Pixels",
+                     min = 1,
+                     max = 5000000,
+                     value = 30000,
+                     step = 10000),
+
+        helpText("Plots with more pixels will take longer to plot. ")
+      ),
+
+      mainPanel()
+
+      # Show a plot of the generated distribution
+   )
+)
+
+# Define server logic required to draw a histogram
+server <- function(input, output, session) {
+
+   output$scientific <- renderUI({
+     common.value <- input$common.name
+     default.scientific <- if (is.null(common.value)) {
+       "Quercus rubra"
+     } else {
+       as.character(db$scientific_name[db$common == common.value])
+     }
+     selectInput("scientific.name",
+                 "Scientific Name of Organism",
+                 choices = db$scientific_name,
+                 multiple = TRUE,
+                 selectize = TRUE,
+                 selected = default.scientific)
+   })
+
+   output$common <- renderUI({
+     scientific.value <- input$scientific.name
+     default.common <- if (is.null(scientific.value)) {
+       "northern red oak"
+       } else {
+         as.character(db$common[db$scientific_name == scientific.value])
+       }
+     selectInput("common.name",
+                 "Common Name of Organism",
+                 choices = db$common,
+                 multiple = TRUE,
+                 selectize = TRUE,
+                 selected = default.common)
+
+   })
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)
+
+# Define UI for application that draws a histogram
+ui <- fluidPage(
+  
+  # Application title
+  titlePanel("Mapping Tree Distributions"),
+  
+  # Sidebar with a slider input for number of bins 
+  sidebarLayout(
+    sidebarPanel(
+      selectizeInput("scientific.name",
+                  "Scientific Name of Organism",
+                  choices = db$scientific_name,
+                  multiple = TRUE,
+                  selected = NULL),
+      
+      
+      selectizeInput("common.name",
+                  "Common Name of Organism",
+                  choices = db$common,
+                  multiple = TRUE,
+                  selected = NULL),
+      
+      
+      selectInput("map",
+                  "Geographic Area to Plot",
+                  choices = states,
+                  multiple = TRUE,
+                  selectize = TRUE),
+      
+      numericInput("pixels",
+                   "Number of Pixels",
+                   min = 1,
+                   max = 5000000,
+                   value = 30000,
+                   step = 10000),
+      
+      helpText("Plots with more pixels will take longer to plot. ")
+    ),
+    
+    mainPanel()
+    
+    # Show a plot of the generated distribution
+  )
+)
+
+# Define server logic required to draw a histogram
+server <- function(input, output, session) {
+  
+  observeEvent(input$scientific.name, {
+    updateSelectizeInput(session,
+                         "common.name",
+                         selected = db$common[db$scientific_name == input$scientific.name])
+  })
+  
+  observeEvent(input$common.name, {
+    updateSelectizeInput(session,
+                         "scientific.name",
+                         selected = db$scientific_name[db$common == input$common.name])
+  })
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+

@@ -184,7 +184,7 @@ StateStats <- function(rasterfile) {
   return(sum.ba)
 }
 
-tot.ba <- lapply(list.rasters, StateStats)
+tot.ba <- lapply(raster.subset, StateStats)
 tot.ba <- ldply(tot.ba)
 
 ### Database linking file name to species name

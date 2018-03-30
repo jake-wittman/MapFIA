@@ -3,8 +3,25 @@ library(rgdal)
 library(ggplot2)
 library(googledrive)
 library(shiny)
+db <- read.csv("data/summary_table_all.csv")
+usa <- readOGR("data/shapefiles", "states")
+usa <- subset(usa, STATE_NAME != "Hawaii" & STATE_NAME != "Alaska") # contig. usa shapefile
+states <- sort(as.character(unique(usa$STATE_NAME)))
+# NOTE: Need to add regions based on this map (http://www.pathwaystoscience.org/IBPImages/maps/smallusa.gif)
+states <- c(states, "Northeast", "Mid-Atlantic", "Midwest", "Southeast", 
+            "Southwest", "Mountain West", "Pacific West")
+# List of which states need to go with which region
+# Northeast: Maine, Vermont, New Hampshire, New York, Rhode Island, Massachusetts, Connecticut
+# Mid-atlantic: Pennsylvania, New Jersey, Delaware, Maryland, Virginia, West Virginia
+# Midwest: Ohio, Indiana, Kentucky, Michigan, Illinois, Wisconsin, Iowa, Missouri, Minnesota
+# North Dakota, South Dakota, Nebraska, Kansas
+# Southeast: Florida, Tennessee, North Carolina, South Carolina, Georgia, Alabama, Mississippi,
+# Louisiana, Arkansas
+# Southwest: Texas, Oklahoma, Arizona, New Mexico
+# Mountain West: Colorado, Wyoming, Montana, Idaho, Nevada, Utah
+# Pacific West: Oregon, Washington, California
 
-# Define UI for application that draws a histogram
+# NOTE: Maybe need to add something that this is only for the contiguous US?
 ui <- fluidPage(
 
   # Application title
@@ -46,9 +63,13 @@ ui <- fluidPage(
       
     ),
 
-    mainPanel()
+    mainPanel(
+      #plotOutput(Distribution map goes here)
+      #plotOutput(Proportional bar charts here (conditional display based on inputs?))
+      #
+    )
 
-    # Show a plot of the generated distribution
+    
   )
 )
 
@@ -72,6 +93,36 @@ server <- function(input, output, session) {
     output$map <- renderPlot({
       # Plot script goes here
     })
+  })
+  
+  observeEvent(input$map, {
+    if (input$map == "Northeast") {
+      updateSelectizeInput(session,
+                           "map",
+                           selected = c("Connecticut", "Maine", "Massachusetts", "New Hampshire", "New York",                             "Rhode Island", "Vermont"))
+    } else if (input$map == "Mid-Atlantic") {
+      updateSelectizeInput(session,
+                           "map",
+                           selected = c("Delaware", "Maryland", "New Jersey", "Pennsylvania", "Virginia",
+                           "West Virginia"))
+    } else if (input$map == "Southeast") {
+      
+    } else if (input$map == "Midwest") {
+      updateSelectizeInput(session,
+                           "map",
+                           selected = c("Illiois", "Indiana", "Iowa", "Kansas", "Kentucky", "Michigan",
+                                        "Minnesota", "Missouri", "Nebraska", "North Dakota", "Ohio",
+                                        "South Dakota", "Wisconsin"))
+      
+      Ohio, Indiana, Kentucky, Michigan, Illinois, Wisconsin, Iowa, Missouri, Minnesota
+      # North Dakota, South Dakota, Nebraska, Kansas
+    } else if (input$map == "Southwest") {
+      
+    } else if (input$map == "Mountain West") {
+      
+    } else (input$map == "Pacific West") {
+      
+    }
   })
   
   output$conditional.map.options <- renderUI({

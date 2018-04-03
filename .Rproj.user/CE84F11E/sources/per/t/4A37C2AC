@@ -5,15 +5,15 @@
     "dirty" : false,
     "encoding" : "UTF-8",
     "folds" : "",
-    "hash" : "4043638453",
+    "hash" : "667469585",
     "id" : "4A37C2AC",
-    "lastKnownWriteTime" : 1521323165,
-    "last_content_update" : 1521323165849,
+    "lastKnownWriteTime" : 1522793380,
+    "last_content_update" : 1522793380,
     "path" : "~/MapFIA/MapFIA/app.R",
     "project_path" : "MapFIA/app.R",
     "properties" : {
         "cursorPosition" : "27,50",
-        "scrollLine" : "0"
+        "scrollLine" : "92"
     },
     "relative_order" : 2,
     "source_on_save" : false,

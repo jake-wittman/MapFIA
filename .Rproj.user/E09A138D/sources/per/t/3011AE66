@@ -1,0 +1,29 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1522783679025.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "3011AE66",
+    "lastKnownWriteTime" : 32651513914720368,
+    "last_content_update" : 1522783679025,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "703C999",
+        "caption" : "sum.tot.ba",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=sum.tot.ba&cache_key=703C999",
+        "displayedObservations" : "2",
+        "environment" : "",
+        "object" : "sum.tot.ba",
+        "preview" : "0",
+        "totalObservations" : "2",
+        "variables" : "3"
+    },
+    "relative_order" : 4,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}

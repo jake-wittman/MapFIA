@@ -6,6 +6,7 @@ library(ggplot2)
 library(viridis)
 library(rasterVis)
 library(ggthemes)
+library(maptools)
 
 
 PlotUSA <- function(raster) {
@@ -43,6 +44,7 @@ plot(mn.wi.white.oak)
 plot(mn.wi, add = T)
 
 ### Make the usa shapefile plotable by ggplot
+# Is this really necessary?
 usa@data$id <- rownames(usa@data)
 ggusa <- fortify(usa, region = "id")
 ggusa <- merge(ggusa, usa@data, by = "id")
@@ -61,21 +63,24 @@ ggplot(gg.contig.usa, aes(x = long, y = lat, group = group, fill = "none")) +
 
 ### Plot with g(g)plot
 # Default number of pixels for gplot is 50,000. Default for plot is 500,000.
-# They take the same amount of time to plot at 50,000
+# They take the same amount of [time to plot at 50,000
 # At 100,000 and 200,000 pixels they're essentially the same still.
 # At 5,000,000 pixels, gplot was about 2 seconds faster.
 # And it doesn't like to plot 200,000,000 pixels.
-system.time(plot <- gplot(x = white.oak, maxpixels = 200000000) +
+system.time(plot <- gplot(x = white.oak, maxpixels = 2000) +
               geom_raster(aes(x = x, y = y, fill = value)) +
               geom_polygon(data = gg.contig.usa, aes(x = long, y = lat, group = group),
                            fill = NA, color = "black"))
 system.time(plot(white.oak, maxpixels = 200000000))
 
-plot <- gplot(x = white.oak) +
+plot <- gplot(x = white.oak, maxpixels = 2000) +
   geom_raster(aes(x = x, y = y, fill = value)) +
-  geom_polygon(data = gg.contig.usa, aes(x = long, y = lat, group = group),
+  geom_polygon(data = contig.usa, aes(x = long, y = lat, group = group),
                fill = NA, color = "black")
-plot + scale_fill_gradientn(colors = c("white", terrain.colors(5), "black")) + theme_map()
+plot + 
+  scale_fill_gradientn(colors = c("white", terrain.colors(2)),
+                            name = "Basal Area") + 
+  theme_map()
 
 # Summary data
 

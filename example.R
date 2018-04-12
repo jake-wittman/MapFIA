@@ -9,9 +9,9 @@ library(ggthemes)
 library(maptools)
 
 
-PlotUSA <- function(raster) {
+PlotUSA <- function(raster, maxpixels) {
   plot(raster)
-  plot(contig.usa, add = T)
+  plot(contig.usa, add = T, maxpixels = 500000)
 }
 
 
@@ -20,7 +20,7 @@ white.oak <- raster("data/s802.img")
 red.oak <- raster("data/s833.img")
 usa <- spTransform(usa, CRS(proj4string(white.oak))) # transform shapefile to project with raster
 contig.usa <- subset(usa, STATE_NAME != "Hawaii" & STATE_NAME != "Alaska") # contig. usa shapefile
-wisconsin <- subset(usa, STATE_NAME == "Wisconsin") 
+minnesota <- subset(usa, STATE_NAME == "Minnesota") 
 mn.wi <- subset(usa, STATE_NAME == "Wisconsin" | STATE_NAME == "Minnesota")
 states <- as.character(unique(contig.usa$STATE_NAME))
 arizona <- subset(contig.usa, STATE_NAME == "Arizona")
@@ -34,7 +34,15 @@ PlotUSA(red.oak)
 PlotUSA(oak)
 
 # Clipping to states
-wi.white.oak <- mask(crop(white.oak, extent(wisconsin)), wisconsin)
+# https://stackoverflow.com/questions/33617551/how-to-increase-r-processing-speed-dealing-with-large-raster-stacks
+# ^ Some ideas for maybe speeding this up?
+system.time(mn.white.oak2 <- mask(white.oak, minnesota))
+system.time(mn.white.oak2 <- trim(mn.white.oak2, values = NA))
+system.time(mn.white.oak <- mask(crop(white.oak, extent(minnesota)), minnesota))
+vel.white.oak <- velox(white.oak)
+vel.white.oak$crop(minnesota)
+test <- mask(vel.white.oak, minnesota)
+
 plot(wi.white.oak, maxpixels = 1000)
 plot(wisconsin, add = T)
 
@@ -48,6 +56,11 @@ plot(mn.wi, add = T)
 usa@data$id <- rownames(usa@data)
 ggusa <- fortify(usa, region = "id")
 ggusa <- merge(ggusa, usa@data, by = "id")
+
+minnesota <- spTransform(minnesota, CRS(proj4string(mn.white.oak)))
+minnesota@data$id <- rownames(minnesota@data)
+ggmn <- fortify(minnesota, region = "id")
+ggmn <- merge(ggmn, minnesota@data, by = "id")
 
 # Same but for contiguous usa
 contig.usa@data$id <- rownames(contig.usa@data)
@@ -73,21 +86,25 @@ system.time(plot <- gplot(x = white.oak, maxpixels = 2000) +
                            fill = NA, color = "black"))
 system.time(plot(white.oak, maxpixels = 200000000))
 
-plot <- gplot(x = white.oak, maxpixels = 2000) +
+plot <- gplot(x = mn.white.oak, maxpixels = 200000) +
   geom_raster(aes(x = x, y = y, fill = value)) +
-  geom_polygon(data = contig.usa, aes(x = long, y = lat, group = group),
-               fill = NA, color = "black")
+  geom_polygon(data = ggmn, aes(x = long, y = lat, group = group),
+               fill = NA, color = "black") +
+  coord_fixed(1.2) + theme_void()
 plot + 
   scale_fill_gradientn(colors = c("white", terrain.colors(2)),
-                            name = "Basal Area") + 
-  theme_map()
-
+                            name = "Basal Area") 
+  
+plot(white.oak)
 # Summary data
 
 
 ### Use cellStats to return a single value for analyzing raster data
 # Depending on which version of the dataset I use, get different mean values...
 # Also, doesn't match the summary value from the db
+
+# https://stackoverflow.com/questions/34064738/fastest-way-to-select-a-valid-range-for-raster-data
+# ^ Possibly useful for reclassifying raster values
 cellStats(white.oak, stat = "mean")
 test <- white.oak
 test[test == 0] <- NA # Converts 0 to NA
@@ -108,6 +125,8 @@ hist(test) # plots much faster this way
 
 ### If I sum two rasters where 0 are NA, what happens?
 ### Also, plotting two rasters - is this the best way?
+test <- stack(red.oak, white.oak)
+plot(test)
 red.and.white.oak <- red.oak + white.oak
 plot(red.and.white.oak)
 plot(contig.usa, add = T)

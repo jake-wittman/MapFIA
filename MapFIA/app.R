@@ -6,22 +6,33 @@ library(googledrive)
 library(shiny)
 library(data.table)
 library(scales)
+library(rasterVis)
+library(viridis)
+
 # TO DO:
 # Put in more options to customize resulting graphs
+# Make barplots reactive. They load much faster and don't need the button reactivity
 # Make raster map aesthetics reactive (not the map itself)
 
 # Global data 
 db <- fread("data/summary_table_all.csv") # db with name info
 # Basal area data
-tot.ba <- rbindlist(tot.ba.list) 
 tot.ba <- fread("data/basal_area_summary.csv")
-names(tot.ba) <- c("spp_code", "state", "tot_ba") 
 # State shapefiles
+
 usa <- readOGR("data/shapefiles", "states")
 usa <- subset(usa, STATE_NAME != "Hawaii" & STATE_NAME != "Alaska") # contig. usa shapefile
 states <- sort(as.character(unique(usa$STATE_NAME)))
-states <- c(states, "Northeast", "Mid-Atlantic", "Midwest", "Southeast", 
+# conver shapefile to format usable by ggplot
+CRS <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,-0,-0,-0,0 +units=m +no_defs"
+usa <- spTransform(usa, CRS)
+usa@data$id <- rownames(usa@data)
+gg.usa <- fortify(usa, region = "id")
+gg.usa <- merge(gg.usa, usa@data, by = "id")
+
+states <- c("Contiguous USA", states, "Northeast", "Mid-Atlantic", "Midwest", "Southeast", 
             "Southwest", "Mountain West", "Pacific West")
+
 
 
 # NOTE: Maybe need to add something that this is only for the contiguous US?
@@ -67,9 +78,9 @@ ui <- fluidPage(
     ),
 
     mainPanel(
-      #plotOutput(Distribution map goes here)
+      plotOutput("map"),
       plotOutput("barchart")
-      #
+      
     )
 
     
@@ -208,20 +219,46 @@ server <- function(input, output, session) {
     com.name <- db$common[db$spp_code %in% id]
     # Get region for entered states
     regions <- input$shapefiles
-    
-    if (is.na(regions)) { # If no selection made, plot whole US
-      plot <- gplot(x = SPECIES, maxpixels = 2000) +
+    spp.raster <- raster(paste0("raster.files/", id, ".img"))
+    if (regions == "Contiguous USA") { # If USA is selected, plot whole US
+      # Make plot
+      #plot <- 
+        gplot(x = spp.raster, maxpixels = input$pixels) +
         geom_raster(aes(x = x, y = y, fill = value)) +
-        geom_polygon(data = contig.usa, aes(x = long, y = lat, group = group),
-                     fill = NA, color = "black")
+        geom_polygon(data = gg.usa, aes(x = long, y = lat, group = group),
+                     fill = NA, color = "black") +
+        scale_fill_gradientn(colors = c("white", terrain.colors(5)),
+                             name = "Basal Area") + 
+        theme_void() +
+        ggtitle(paste("Basal area per pixel of", input$common.name)) +
+        theme(plot.title = element_text(hjust = 0.5)) 
      # This part here v needs to be reactive to changing plot aesthetics
-      # but should not remake plot
-       plot +
-        scale_fill_gradientn(colors = c("white", terrain.colors(2)),name = "Basal Area") + 
-        theme_map()
+     # but should not remake plot
+      plot
       
     } else { # plot just selected state shapefiles
+      # Crop raster to extent of selected polygons
+      sub.states <- subset(usa, STATE_NAME %in% input$shapefiles)
+      spp.raster <- mask(crop(spp.raster, extent(sub.states)), sub.states)
+      sub.states@data$id <- rownames(sub.states@data)
+      sub.states <- fortify(sub.states, region = "id")
       
+      # Produce plot
+      plot <- gplot(x = spp.raster, maxpixels = input$pixels) +
+        geom_raster(aes(x = x, y = y, fill = value)) +
+        geom_polygon(data = sub.states, aes(x = long, y = lat, group = group),
+                     fill = NA, color = "black") +
+        scale_fill_gradientn(colors = c("white", terrain.colors(5)),
+                             name = "Basal Area",
+                             na.value = "white") + 
+        theme_void() +
+        ggtitle(paste("Basal area per pixel of", input$common.name)) +
+        theme(plot.title = element_text(hjust = 0.5),
+              panel.background = element_blank()) +
+        coord_fixed(1.3)
+      # This part here v needs to be reactive to changing plot aesthetics
+      # but should not remake plot
+      plot
     }
   })
   

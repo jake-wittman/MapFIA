@@ -1,5 +1,0 @@
-comm <- c("northern red oak", "white pine", "balsam fir", "box elder")
-sci <- c("Quercus rubra", "Pinus strobus", "Abies balsamea", "Acer negundo")
-db <- as.data.frame(cbind(comm, sci))
-colnames(db) <- c("common", "scientific_name")
-head(db)

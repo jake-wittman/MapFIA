@@ -12,8 +12,8 @@ library(viridis)
 
 # TO DO:
 # Put in more options to customize resulting graphs
-# Make barplots reactive. They load much faster and don't need the button reactivity
-# Make raster map aesthetics reactive (not the map itself)
+# For plotting multiple spp: just add them, it's faster. Also, use reclassify
+# to do the cooccurrence graphs.
 
 # Global data 
 db <- fread("data/summary_table_all.csv") # db with name info
@@ -63,35 +63,74 @@ ui <- fluidPage(
                   multiple = TRUE,
                   selectize = TRUE),
       
-      uiOutput("conditional.map.options"),  
-      
-      radioButtons("theme.customization",
-                   "Map Color Customization Options",
-                   choices = list(
-                     "two color gradient" = "two.color.gradient",
-                     "diverging gradient" = "div.gradient",
-                     "n color gradient" = "n.color.gradient"),
-                     selected = "built.in"
-                   ),
-      
-      uiOutput("conditional.theme.customization"),
-      
       numericInput("pixels",
                    "Number of Pixels",
                    min = 1,
                    max = 5000000,
                    value = 30000,
                    step = 10000),
-
-      helpText("Plots with more pixels will take longer to generate"),
       
-      actionButton("go", "Generate Map")
+      helpText("Plots with more pixels will take longer to generate."),
       
+      uiOutput("conditional.map.options"),  
+      
+      actionButton("go", "Generate Map"),
+      
+      h3("Map Color Customization Options"),
+      
+      helpText("The customization options below can be changed without regenerating the map."),
+      
+      radioButtons("theme.customization",
+                   NULL,
+                   choices = list(
+                     "two color gradient" = "two.color.gradient",
+                     "diverging gradient" = "div.gradient",
+                     "preset palettes" = "n.color.gradient"),
+                     selected = "two.color.gradient"
+                   ),
+      
+      uiOutput("conditional.theme.customization")
     ),
 
     mainPanel(
       plotOutput("map"),
-      plotOutput("barchart")
+      
+      selectInput("file.type",
+                "Choose File Type for Download",
+                choices = list(
+                  "PNG" = "png",
+                  "PDF" = "pdf",
+                  "TIFF" = "tiff"
+                )),
+      
+      numericInput("dpi",
+                   "DPI",
+                   min = 150,
+                   max = 3000,
+                   step = 50,
+                   value = 300),
+      
+      numericInput("height",
+                   "Height of Figure (in)",
+                   min = 0,
+                   max = NA,
+                   value = 3,
+                   step = 0.5),
+      
+      numericInput("width",
+                   "Width of Figure (in)",
+                   min = 0,
+                   max = NA,
+                   value = 4.5,
+                   step = 0.5),
+      
+      downloadButton("download.map",
+                     "Download Map"),
+      
+      plotOutput("barchart"),
+      
+      downloadButton("download.graph",
+                     "Download Graph")
       
     )
 
@@ -219,7 +258,13 @@ server <- function(input, output, session) {
         textInput("high",
                   label = "High color",
                   value = "orange",
-                  placeholder = "High color (name or hex code)")
+                  placeholder = "High color (name or hex code)"),
+        
+        numericInput("midpoint",
+                  label = "Mid-point Value",
+                  value = 20,
+                  min = 0,
+                  max = NA)
         
       )
     }
@@ -274,7 +319,10 @@ server <- function(input, output, session) {
   })
   
   ### Barchart code
+  ### Conditional - needs >=2 "regions" selected to display
   output$barchart <- renderPlot({
+    if (length(input$scientific.name) > 1 |
+       length(input$common.name) > 1) {
     # Get ID for select spp
     id <- db$spp_code[db$scientific_name %in% input$scientific.name]
     # Get scientific & common names for select spp
@@ -301,7 +349,8 @@ server <- function(input, output, session) {
       labs(x = "States", y = "Percentage of Total Basal Area in State") +
       scale_fill_discrete(labels = sci.name,
                           name = "Species") 
-  })
+    }
+  })#end barchart code
 
   ### Map code
   ### Reactive to map button
@@ -313,91 +362,149 @@ server <- function(input, output, session) {
     # Get region for entered states
     regions <- input$shapefiles
     spp.raster <- raster(paste0("raster.files/", id, ".img"))
-    if ("Contiguous USA" %in% regions) { # If USA is selected, plot whole US
-      # Make plot
-       plot <- gplot(x = spp.raster, maxpixels = input$pixels) +
-        geom_raster(aes(x = x, y = y, fill = value)) +
-        geom_polygon(data = gg.usa, aes(x = long, y = lat, group = group),
-                     fill = NA, color = "black") 
+      if ("Contiguous USA" %in% regions) { # If USA is selected, plot whole US
+        # Make plot
+        # Need to reclassify 0s to NA so plot looks okay. Doesn't affect pixel values
+        plot <- gplot(x = reclassify(spp.raster, c(-0.001, 0.001, NA)), maxpixels = input$pixels) +
+          geom_raster(aes(x = x, y = y, fill = value)) +
+          geom_polygon(data = gg.usa, aes(x = long, y = lat, group = group),
+                      fill = "transparent", color = "black") 
+      } else { # plot just selected state shapefiles
+         # Crop raster to extent of selected polygons
+         sub.states <- subset(usa, STATE_NAME %in% regions)
+         spp.raster <- mask(crop(spp.raster, extent(sub.states)), sub.states)
+         sub.states@data$id <- rownames(sub.states@data)
+         sub.states <- fortify(sub.states, region = "id")
+         
+         # Produce plot
+         plot <- gplot(x = spp.raster, maxpixels = input$pixels) +
+           geom_raster(aes(x = x, y = y, fill = value)) +
+           geom_polygon(data = sub.states, aes(x = long, y = lat, group = group),
+                        fill = NA, color = "black") 
+      }
+    
+    
+  }) # end map generating code, responsive to go button
         
-     # This part here v needs to be reactive to changing plot aesthetics
-     # but should not remake plot
-       if (input$theme.customization == "two.color.gradient") {
-         # two color gradient
-         plot +
-           scale_fill_gradient(low = input$low,
-                               high = input$high,
-                               na.value = "white",
-                               name = "Basal Area") +
-           theme_void() +
-           ggtitle(paste("Basal area per pixel of", input$common.name)) +
-           theme(plot.title = element_text(hjust = 0.5))
-       } else if (input$theme.customization == "div.gradient") { 
-         #diverging gradient fill
-         plot +
-           scale_fill_gradient2(
-             low = input$low,
-             mid = input$mid,
-             high = input$high,
-             midpoint = cellStats(spp.raster, stat = "mean"),
-             na.value = "white",
-             name = "Basal Area") +
-           theme_void() +
-           ggtitle(paste("Basal area per pixel of", input$common.name)) +
-           theme(plot.title = element_text(hjust = 0.5))
-       } else { # n.gradient fill
-           if (input$direction == "FALSE") { # normal direction of palette
-             plot +
-               scale_fill_distiller(palette = input$palette,
-                                    na.value = "white",
-                                    direction = 1,
-                                    name = "Basal Area") +
-               theme_void() +
-               ggtitle(paste("Basal area per pixel of", input$common.name)) +
-               theme(plot.title = element_text(hjust = 0.5))
-           } else { # reverse direction
-               plot +
-                 scale_fill_distiller(palette = input$palette,
-                                      na.value = "white",
-                                      direction = -1,
-                                      name = "Basal Area") +
-                 theme_void() +
-                 ggtitle(paste("Basal area per pixel of", input$common.name)) +
-                 theme(plot.title = element_text(hjust = 0.5))
-             }
-         }
-      
-    } else { # plot just selected state shapefiles
-      # Crop raster to extent of selected polygons
-      sub.states <- subset(usa, STATE_NAME %in% regions)
-      spp.raster <- mask(crop(spp.raster, extent(sub.states)), sub.states)
-      sub.states@data$id <- rownames(sub.states@data)
-      sub.states <- fortify(sub.states, region = "id")
-      
-      # Produce plot
-      plot <- gplot(x = spp.raster, maxpixels = input$pixels) +
-        geom_raster(aes(x = x, y = y, fill = value)) +
-        geom_polygon(data = sub.states, aes(x = long, y = lat, group = group),
-                     fill = NA, color = "black") 
-        
-      # This part here v needs to be reactive to changing plot aesthetics
-      # but should not remake plot
-      plot + 
-        scale_fill_gradientn(colors = c("white", terrain.colors(5)),
-                                name = "Basal Area",
-                                na.value = "white") + 
+     
+  output$map <- renderPlot({
+    # This part here v needs to be reactive to changing plot aesthetics
+    # but should not remake plot
+    if (input$theme.customization == "two.color.gradient") {
+      # two color gradient
+      map() +
+        scale_fill_gradient(low = input$low,
+                            high = input$high,
+                            na.value = "white",
+                            name = "Average Basal Area \n per Acre") +
         theme_void() +
         ggtitle(paste("Basal area per pixel of", input$common.name)) +
-        theme(plot.title = element_text(hjust = 0.5),
-              panel.background = element_blank()) +
-        coord_fixed(1.3)
-    }
-  })
+        theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+      
+    } else if (input$theme.customization == "div.gradient") { 
+      #diverging gradient fill
+      map() +
+        scale_fill_gradient2(
+          low = input$low,
+          mid = input$mid,
+          high = input$high,
+          midpoint = input$midpoint,
+          na.value = "white",
+          name = "Average Basal Area \n per Acre") +
+        theme_void() +
+        ggtitle(paste("Basal area per pixel of", input$common.name)) +
+        theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+      
+    } else { # n.gradient fill
+      if (input$direction == "FALSE") { # normal direction of palette
+        map() +
+          scale_fill_distiller(palette = input$palette,
+                               na.value = "white",
+                               direction = 1,
+                               name = "Average Basal Area \n per Acre") +
+          theme_void() +
+          ggtitle(paste("Basal area per pixel of", input$common.name)) +
+          theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+        
+      } else { # reverse direction
+        map() +
+          scale_fill_distiller(palette = input$palette,
+                               na.value = "white",
+                               direction = -1,
+                               name = "Average Basal Area \n per Acre") +
+          theme_void() +
+          ggtitle(paste("Basal area per pixel of", input$common.name)) +
+          theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+      }
+    } # end n.gradient fill direction flow
+    
+   }) # end outputPlot for map
   
-  output$map <- renderPlot({
-    map()
-  })
-}
+  plotInput <- function() {
+    if (input$theme.customization == "two.color.gradient") {
+      # two color gradient
+      map() +
+        scale_fill_gradient(low = input$low,
+                            high = input$high,
+                            na.value = "white",
+                            name = "Average Basal Area \n per Acre") +
+        theme_void() +
+        ggtitle(paste("Basal area per pixel of", input$common.name)) +
+        theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+    } else if (input$theme.customization == "div.gradient") { 
+      #diverging gradient fill
+      map() +
+        scale_fill_gradient2(
+          low = input$low,
+          mid = input$mid,
+          high = input$high,
+          midpoint = input$midpoint,
+          na.value = "white",
+          name = "Average Basal Area \n per Acre") +
+        theme_void() +
+        ggtitle(paste("Basal area per pixel of", input$common.name)) +
+        theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+    } else { # n.gradient fill
+      if (input$direction == "FALSE") { # normal direction of palette
+        map() +
+          scale_fill_distiller(palette = input$palette,
+                               na.value = "white",
+                               direction = 1,
+                               name = "Average Basal Area \n per Acre") +
+          theme_void() +
+          ggtitle(paste("Basal area per pixel of", input$common.name)) +
+          theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+      } else { # reverse direction
+        map() +
+          scale_fill_distiller(palette = input$palette,
+                               na.value = "white",
+                               direction = -1,
+                               name = "Average Basal Area \n per Acre") +
+          theme_void() +
+          ggtitle(paste("Basal area per pixel of", input$common.name)) +
+          theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+      }
+    }
+  }
+  
+  output$download.map <- downloadHandler(
+    filename = function() {
+      paste0(gsub(" ", "", input$scientific.name, fixed = T), ".", input$file.type)
+      },
+    content = function(file) {
+      ggsave(file, 
+             plot = plotInput(),
+             device = input$file.type,
+             dpi = input$dpi,
+             width = input$width,
+             height = input$height,
+             units = "in")
+      }
+  ) # end download handler
+  
+  
+  
+} #end server  
   
 
 

@@ -16,8 +16,8 @@ PlotUSA <- function(raster, maxpixels) {
 
 
 usa <- readOGR("data/shapefiles", "states") # get usa shapefile
-white.oak <- raster("data/s802.img")
-red.oak <- raster("data/s833.img")
+white.oak <- raster("raster.files/s802.img")
+red.oak <- raster("raster.files/s833.img")
 usa <- spTransform(usa, CRS(proj4string(white.oak))) # transform shapefile to project with raster
 contig.usa <- subset(usa, STATE_NAME != "Hawaii" & STATE_NAME != "Alaska") # contig. usa shapefile
 minnesota <- subset(usa, STATE_NAME == "Minnesota") 
@@ -126,24 +126,44 @@ hist(test) # plots much faster this way
 ### If I sum two rasters where 0 are NA, what happens?
 ### Also, plotting two rasters - is this the best way?
 test <- stack(red.oak, white.oak)
-plot(test)
-red.and.white.oak <- red.oak + white.oak
+test2 <- sum(test)
+test3 <- calc(test, sum)
+plot(test2)
+plot(test3)
+system.time(red.and.white.oak <- red.oak + white.oak)
 plot(red.and.white.oak)
 plot(contig.usa, add = T)
 plot(red.oak)
-
+# Just adding the rasters together is faster than using sum (at least for 2 rasters)
+# Also faster than overlay below
+# Using clusterR to sum stacks is NOT faster.
 rw.overlay.oak <- overlay(red.oak, white.oak, fun = function(r1, r2) {return(r1 + r2)})
 plot(rw.overlay.oak)
+beginCluster(6)
+system.time(v <- clusterR(s, calc, args = list(sum)))
+endCluster()
+microbenchmark::microbenchmark(
+  {beginCluster(4)
+  clusterR(test, calc, args = list(sum))
+  endCluster()},
+  red.oak + white.oak
 
+)
+# Using reclassify is much faster than using the index replacement of 0 with NA
 red.oak.NA <- red.oak
-red.oak.NA[red.oak.NA == 0] <- NA
+system.time(red.oak.NA[red.oak.NA == 0] <- NA)
+plot(red.oak.NA)
+system.time(red.oak.NA2 <- reclassify(red.oak, c(-0.001, 0.001, NA)))
+plot(red.oak.NA2)
 white.oak.NA <- white.oak
 white.oak.NA[white.oak.NA == 0] <- NA
 
+# I can plot (at least in base plot) and just reclassify within the plot command and add them together
 par(mfrow = c(2, 2))
 PlotUSA(red.oak.NA)
 PlotUSA(white.oak.NA)
 rw.oak.NA <- red.oak.NA + white.oak.NA
+plot((reclassify(red.oak, c(-0.001, 0.001, NA)) + reclassify(white.oak, c(-0.001, 0.001, NA))))
 PlotUSA(rw.oak.NA) # so if I sum with NA, ito only shows where they co-occur. Could be useful
 rw.overlay.NA <- overlay(red.oak.NA, white.oak.NA, fun = function(r1, r2) {return(r1 + r2)})
 PlotUSA(rw.overlay.NA) # same as above. 

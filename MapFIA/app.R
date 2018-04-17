@@ -213,7 +213,7 @@ server <- function(input, output, session) {
   output$conditional.map.options <- renderUI({
     if (length(input$scientific.name) > 1 |
         length(input$common.name) > 1) {
-      checkboxGroupInput(
+      radioButtons(
         "dist.options",
         label = "Distribution Mapping Options",
         choices = list(
@@ -355,33 +355,63 @@ server <- function(input, output, session) {
   ### Map code
   ### Reactive to map button
   map <- eventReactive(input$go, {
+    # Get ID code for each spp
     id <- db$spp_code[db$scientific_name %in% input$scientific.name]
     # Get scientific & common names for select spp
     sci.name <- db$scientific_name[db$spp_code %in% id]
     com.name <- db$common[db$spp_code %in% id]
     # Get region for entered states
     regions <- input$shapefiles
-    spp.raster <- raster(paste0("raster.files/", id, ".img"))
-      if ("Contiguous USA" %in% regions) { # If USA is selected, plot whole US
-        # Make plot
-        # Need to reclassify 0s to NA so plot looks okay. Doesn't affect pixel values
-        plot <- gplot(x = reclassify(spp.raster, c(-0.001, 0.001, NA)), maxpixels = input$pixels) +
-          geom_raster(aes(x = x, y = y, fill = value)) +
-          geom_polygon(data = gg.usa, aes(x = long, y = lat, group = group),
-                      fill = "transparent", color = "black") 
-      } else { # plot just selected state shapefiles
-         # Crop raster to extent of selected polygons
-         sub.states <- subset(usa, STATE_NAME %in% regions)
-         spp.raster <- mask(crop(spp.raster, extent(sub.states)), sub.states)
-         sub.states@data$id <- rownames(sub.states@data)
-         sub.states <- fortify(sub.states, region = "id")
-         
-         # Produce plot
-         plot <- gplot(x = spp.raster, maxpixels = input$pixels) +
-           geom_raster(aes(x = x, y = y, fill = value)) +
-           geom_polygon(data = sub.states, aes(x = long, y = lat, group = group),
-                        fill = NA, color = "black") 
-      }
+    if (length(id) > 1) {
+      # For plotting more than 1 spp
+      if (input$dist.options == "overlay") {
+        # for plotting overlay
+        paths <- paste0("raster.files/", id, ".img")
+        spp.raster <- reclassify(sum(stack(paths)), c(-0.001, 0.001, NA))
+      } else {
+        #for plotting co-occurence
+        paths <- paste0("raster.files/", id, ".img")
+        paths <- lapply(paths, raster)
+        paths <- lapply(paths, reclassify, c(-0.001, 0.001, NA))
+        spp.raster <- sum(stack(paths))
+      } # end multiple spp chunk
+      
+    } else {
+      spp.raster <- reclassify(raster(paste0("raster.files/", id, ".img")), c(-0.001, 0.001, NA))
+    }
+    if ("Contiguous USA" %in% regions) {
+      # If USA is selected, plot whole US
+      # Make plot
+      # Need to reclassify 0s to NA so plot looks okay. Doesn't affect pixel values
+      plot <-
+        gplot(x = spp.raster,
+              maxpixels = input$pixels) +
+        geom_raster(aes(x = x, y = y, fill = value)) +
+        geom_polygon(
+          data = gg.usa,
+          aes(x = long, y = lat, group = group),
+          fill = "transparent",
+          color = "black"
+        )
+    } else {
+      # plot just selected state shapefiles
+      # Crop raster to extent of selected polygons
+      sub.states <- subset(usa, STATE_NAME %in% regions)
+      spp.raster <-
+        mask(crop(spp.raster, extent(sub.states)), sub.states)
+      sub.states@data$id <- rownames(sub.states@data)
+      sub.states <- fortify(sub.states, region = "id")
+      
+      # Produce plot
+      plot <- gplot(x = spp.raster, maxpixels = input$pixels) +
+        geom_raster(aes(x = x, y = y, fill = value)) +
+        geom_polygon(
+          data = sub.states,
+          aes(x = long, y = lat, group = group),
+          fill = NA,
+          color = "black"
+        )
+    }
     
     
   }) # end map generating code, responsive to go button

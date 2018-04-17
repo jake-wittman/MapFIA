@@ -1,5 +1,6 @@
 # Load libraries
 library(raster)
+library(rgeos)
 library(rgdal)
 library(ggplot2)
 library(googledrive)
@@ -64,6 +65,17 @@ ui <- fluidPage(
       
       uiOutput("conditional.map.options"),  
       
+      radioButtons("theme.customization",
+                   "Map Color Customization Options",
+                   choices = list(
+                     "two color gradient" = "two.color.gradient",
+                     "diverging gradient" = "div.gradient",
+                     "n color gradient" = "n.color.gradient"),
+                     selected = "built.in"
+                   ),
+      
+      uiOutput("conditional.theme.customization"),
+      
       numericInput("pixels",
                    "Number of Pixels",
                    min = 1,
@@ -90,13 +102,13 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
   
-  # Reactive code chunk updating common name field if species selected by scientific name
+  ### Reactive code chunk updating common name field if species selected by scientific name
   observeEvent(input$scientific.name, {
     updateSelectizeInput(session,
                          "common.name",
                          selected = db$common[db$scientific_name %in% input$scientific.name])
   })
-  # Reactive code chunk updating scientific name field if species selected by common name
+  ### Reactive code chunk updating scientific name field if species selected by common name
   observeEvent(input$common.name, {
     updateSelectizeInput(session,
                          "scientific.name",
@@ -105,33 +117,33 @@ server <- function(input, output, session) {
   
   
   
-  # For selecting states by region
-  # Regions based on this map (http://www.pathwaystoscience.org/IBPImages/maps/smallusa.gif)
+  ### For selecting states by region
+  ### Regions based on this map (http://www.pathwaystoscience.org/IBPImages/maps/smallusa.gif)
   observeEvent(input$shapefiles, {
     if ("Northeast" %in% input$shapefiles) {
       updateSelectizeInput(session,
-                           "map",
+                           "shapefiles",
                            selected = c(input$shapefiles[!input$shapefiles %in% "Northeast"], "Connecticut", 
                                         "Maine", "Massachusetts", "New Hampshire", "New York",
                                         "Rhode Island", "Vermont"))
       
     } else if ("Mid-Atlantic" %in% input$shapefiles) {
       updateSelectizeInput(session,
-                           "map",
+                           "shapefiles",
                            selected = c(input$shapefiles[!input$shapefiles %in% "Mid-Atlantic"], "Delaware",
                                         "Maryland", "New Jersey", "Pennsylvania", "Virginia",
                                         "West Virginia"))
       
     } else if ("Southeast" %in% input$shapefiles) {
       updateSelectizeInput(session,
-                           "map",
+                           "shapefiles",
                            selected = c(input$shapefiles[!input$shapefiles %in% "Southeast"], "Alabama", "Arkansas", 
                                         "Florida", "Georgia", "Louisiana", "Mississippi",
                                         "North Carolina", "South Carolina", "Tennessee"))
       
     } else if ("Midwest" %in% input$shapefiles) {
       updateSelectizeInput(session,
-                           "map",
+                           "shapefiles",
                            selected = c(input$shapefiles[!input$shapefiles %in% "Midwest"], "Illiois", "Indiana", 
                                         "Iowa", "Kansas", "Kentucky", "Michigan",
                                         "Minnesota", "Missouri", "Nebraska", "North Dakota", "Ohio",
@@ -139,26 +151,26 @@ server <- function(input, output, session) {
       
     } else if ("Southwest" %in% input$shapefiles) {
       updateSelectizeInput(session,
-                           "map",
+                           "shapefiles",
                            selected = c(input$shapefiles[!input$shapefiles %in% "Southwest"], "Arizona", 
                                         "New Mexico", "Oklahoma", "Texas"))
       
     } else if ("Mountain West" %in% input$shapefiles) {
       updateSelectizeInput(session,
-                           "map",
+                           "shapefiles",
                            selected = c(input$shapefiles[!input$shapefiles %in% "Mountain West"], "Colorado", 
                                         "Idaho", "Montana", "Nevada", "Utah", "Wyoming"))
       
     } else if("Pacific West" %in% input$shapefiles ) {
       updateSelectizeInput(session,
-                           "map",
+                           "shapefiles",
                            selected = c(input$shapefiles[!input$shapefiles %in% "Pacific West"], "California", 
                                         "Oregon", "Washington"))
       
     }
   })
   
-  # Conditional part of side panel - show if selected species is > 1
+  ### Conditional part of side panel - show if selected species is > 1
   output$conditional.map.options <- renderUI({
     if (length(input$scientific.name) > 1 |
         length(input$common.name) > 1) {
@@ -168,7 +180,7 @@ server <- function(input, output, session) {
         choices = list(
           "Map showing the combined distribution of selected species" =
             "overlay",
-          "Map of only the co-occurence of selected species" =
+          "Map only the co-occurence of selected species" =
             "cooccurence"
         ),
         selected = "overlay"
@@ -176,8 +188,93 @@ server <- function(input, output, session) {
     }
   })
   
-  # Reactive to "go.bp" button, plots selection
-  bc <- eventReactive(input$go, {
+  ### Conditional map theme customization
+  output$conditional.theme.customization <- renderUI({
+    if (input$theme.customization == "two.color.gradient") {
+      tagList(
+        textInput("low",
+                  label = "Low color",
+                  value = "blue",
+                  placeholder = "Low color (name or hex code)"),
+      
+        textInput("high",
+                  label = "High color",
+                  value = "orange",
+                  placeholder = "High color (name or hex code)")
+      )
+    }
+    
+    else if (input$theme.customization == "div.gradient") {
+      tagList(
+        textInput("low",
+                  label = "Low color",
+                  value = "blue",
+                  placeholder = "Low color (name or hex code)"),
+        
+        textInput("mid",
+                  label = "Mid-point color",
+                  value = "white",
+                  placeholder = "Mid-point color (name or hex code)"),
+        
+        textInput("high",
+                  label = "High color",
+                  value = "orange",
+                  placeholder = "High color (name or hex code)")
+        
+      )
+    }
+    else if (input$theme.customization == "n.color.gradient") {
+      tagList(
+        selectizeInput("palette",
+                       "Palette",
+                       choices = list(
+                         "Blues" = "Blues",
+                         "Greens" = "Greens",
+                         "Greys" = "Greys",
+                         "Oranges" = "Oranges",
+                         "Reds" = "Reds",
+                         "Purples" = "Purples",
+                         "Blue to green" = "BuGn",
+                         "Blue to purple" = "BuPu", 
+                         "Green to blue" = "GnBu",
+                         "Orange to red" = "OrRd",
+                         "Purple to blue" = "PuBu",
+                         "Purple to blue to green" = "PuBuGn",
+                         "Purple to red" = "PuRd",
+                         "Red to purple" = "RdPu",
+                         "Yellow to green" = "YlGn",
+                         "Yellow to green to blue" = "YlGnBu",
+                         "Yellow to orange to brown" = "YlOrBr",
+                         "Yellow to orange to red" = "YlOrRd",
+                         "Brown to blue" = "BrBG",
+                         "Pink to green" = "PiYG",
+                         "Purple to green" = "PRGn",
+                         "Orange to purple" = "PuOR",
+                         "Red to blue" = "RdBu",
+                         "Red to grey" = "RdGy",
+                         "Red to yellow to blue" = "RdYlBu",
+                         "Red to yellow to green" = "RdYlGn",
+                         "Spectral" = "Spectral",
+                         "Accent" = "Accent",
+                         "Dark2" = "Dark2",
+                         "Paired" = "Paired",
+                         "Set1" = "Set1", 
+                         "Set2" = "Set2",
+                         "Set3" = "Set3",
+                         "Pastel1" = "Pastel1",
+                         "Pastel2" = "Pastel2"
+                       ),
+                       selected = "GnBu"
+                    ),
+        checkboxInput("direction",
+                      label = "Reverse direction of palette?",
+                      value = FALSE)
+      )
+    }
+  })
+  
+  ### Barchart code
+  output$barchart <- renderPlot({
     # Get ID for select spp
     id <- db$spp_code[db$scientific_name %in% input$scientific.name]
     # Get scientific & common names for select spp
@@ -205,13 +302,9 @@ server <- function(input, output, session) {
       scale_fill_discrete(labels = sci.name,
                           name = "Species") 
   })
-  
-  output$barchart <- renderPlot({
-    bc()
-  })
 
-  
-  # Reactive to map button
+  ### Map code
+  ### Reactive to map button
   map <- eventReactive(input$go, {
     id <- db$spp_code[db$scientific_name %in% input$scientific.name]
     # Get scientific & common names for select spp
@@ -220,25 +313,63 @@ server <- function(input, output, session) {
     # Get region for entered states
     regions <- input$shapefiles
     spp.raster <- raster(paste0("raster.files/", id, ".img"))
-    if (regions == "Contiguous USA") { # If USA is selected, plot whole US
+    if ("Contiguous USA" %in% regions) { # If USA is selected, plot whole US
       # Make plot
-      #plot <- 
-        gplot(x = spp.raster, maxpixels = input$pixels) +
+       plot <- gplot(x = spp.raster, maxpixels = input$pixels) +
         geom_raster(aes(x = x, y = y, fill = value)) +
         geom_polygon(data = gg.usa, aes(x = long, y = lat, group = group),
-                     fill = NA, color = "black") +
-        scale_fill_gradientn(colors = c("white", terrain.colors(5)),
-                             name = "Basal Area") + 
-        theme_void() +
-        ggtitle(paste("Basal area per pixel of", input$common.name)) +
-        theme(plot.title = element_text(hjust = 0.5)) 
+                     fill = NA, color = "black") 
+        
      # This part here v needs to be reactive to changing plot aesthetics
      # but should not remake plot
-      plot
+       if (input$theme.customization == "two.color.gradient") {
+         # two color gradient
+         plot +
+           scale_fill_gradient(low = input$low,
+                               high = input$high,
+                               na.value = "white",
+                               name = "Basal Area") +
+           theme_void() +
+           ggtitle(paste("Basal area per pixel of", input$common.name)) +
+           theme(plot.title = element_text(hjust = 0.5))
+       } else if (input$theme.customization == "div.gradient") { 
+         #diverging gradient fill
+         plot +
+           scale_fill_gradient2(
+             low = input$low,
+             mid = input$mid,
+             high = input$high,
+             midpoint = cellStats(spp.raster, stat = "mean"),
+             na.value = "white",
+             name = "Basal Area") +
+           theme_void() +
+           ggtitle(paste("Basal area per pixel of", input$common.name)) +
+           theme(plot.title = element_text(hjust = 0.5))
+       } else { # n.gradient fill
+           if (input$direction == "FALSE") { # normal direction of palette
+             plot +
+               scale_fill_distiller(palette = input$palette,
+                                    na.value = "white",
+                                    direction = 1,
+                                    name = "Basal Area") +
+               theme_void() +
+               ggtitle(paste("Basal area per pixel of", input$common.name)) +
+               theme(plot.title = element_text(hjust = 0.5))
+           } else { # reverse direction
+               plot +
+                 scale_fill_distiller(palette = input$palette,
+                                      na.value = "white",
+                                      direction = -1,
+                                      name = "Basal Area") +
+                 theme_void() +
+                 ggtitle(paste("Basal area per pixel of", input$common.name)) +
+                 theme(plot.title = element_text(hjust = 0.5))
+             }
+         }
       
     } else { # plot just selected state shapefiles
       # Crop raster to extent of selected polygons
-      sub.states <- subset(usa, STATE_NAME %in% input$shapefiles)
+      sub.states <- subset(usa, STATE_NAME %in% regions)
       spp.raster <- mask(crop(spp.raster, extent(sub.states)), sub.states)
       sub.states@data$id <- rownames(sub.states@data)
       sub.states <- fortify(sub.states, region = "id")
@@ -247,18 +378,19 @@ server <- function(input, output, session) {
       plot <- gplot(x = spp.raster, maxpixels = input$pixels) +
         geom_raster(aes(x = x, y = y, fill = value)) +
         geom_polygon(data = sub.states, aes(x = long, y = lat, group = group),
-                     fill = NA, color = "black") +
+                     fill = NA, color = "black") 
+        
+      # This part here v needs to be reactive to changing plot aesthetics
+      # but should not remake plot
+      plot + 
         scale_fill_gradientn(colors = c("white", terrain.colors(5)),
-                             name = "Basal Area",
-                             na.value = "white") + 
+                                name = "Basal Area",
+                                na.value = "white") + 
         theme_void() +
         ggtitle(paste("Basal area per pixel of", input$common.name)) +
         theme(plot.title = element_text(hjust = 0.5),
               panel.background = element_blank()) +
         coord_fixed(1.3)
-      # This part here v needs to be reactive to changing plot aesthetics
-      # but should not remake plot
-      plot
     }
   })
   

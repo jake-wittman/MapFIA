@@ -11,9 +11,8 @@ library(rasterVis)
 library(viridis)
 
 # TO DO:
-# Put in more options to customize resulting graphs
-# For plotting multiple spp: just add them, it's faster. Also, use reclassify
-# to do the cooccurrence graphs.
+# Put in more options to customize resulting graphs - make customizations an "Advanced Settings" type deal
+# Fix barchart when many states are on x axis
 
 # Global data 
 db <- fread("data/summary_table_all.csv") # db with name info
@@ -23,7 +22,7 @@ tot.ba <- fread("data/basal_area_summary.csv")
 
 usa <- readOGR("data/shapefiles", "states")
 usa <- subset(usa, STATE_NAME != "Hawaii" & STATE_NAME != "Alaska") # contig. usa shapefile
-states <- sort(as.character(unique(usa$STATE_NAME)))
+indv.states <- sort(as.character(unique(usa$STATE_NAME)))
 # conver shapefile to format usable by ggplot
 CRS <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,-0,-0,-0,0 +units=m +no_defs"
 usa <- spTransform(usa, CRS)
@@ -31,7 +30,7 @@ usa@data$id <- rownames(usa@data)
 gg.usa <- fortify(usa, region = "id")
 gg.usa <- merge(gg.usa, usa@data, by = "id")
 
-states <- c("Contiguous USA", states, "Northeast", "Mid-Atlantic", "Midwest", "Southeast", 
+states <- c("Contiguous USA", indv.states, "Northeast", "Mid-Atlantic", "Midwest", "Southeast", 
             "Southwest", "Mountain West", "Pacific West")
 
 
@@ -95,7 +94,7 @@ ui <- fluidPage(
     mainPanel(
       plotOutput("map"),
       
-      selectInput("file.type",
+      selectInput("file.type.map",
                 "Choose File Type for Download",
                 choices = list(
                   "PNG" = "png",
@@ -103,21 +102,21 @@ ui <- fluidPage(
                   "TIFF" = "tiff"
                 )),
       
-      numericInput("dpi",
+      numericInput("dpi.map",
                    "DPI",
                    min = 150,
                    max = 3000,
                    step = 50,
                    value = 300),
       
-      numericInput("height",
+      numericInput("height.map",
                    "Height of Figure (in)",
                    min = 0,
                    max = NA,
                    value = 3,
                    step = 0.5),
       
-      numericInput("width",
+      numericInput("width.map",
                    "Width of Figure (in)",
                    min = 0,
                    max = NA,
@@ -129,8 +128,7 @@ ui <- fluidPage(
       
       plotOutput("barchart"),
       
-      downloadButton("download.graph",
-                     "Download Graph")
+      uiOutput("barchart.download")
       
     )
 
@@ -329,7 +327,11 @@ server <- function(input, output, session) {
     sci.name <- db$scientific_name[db$spp_code %in% id]
     com.name <- db$common[db$spp_code %in% id]
     # Get region for entered states
-    regions <- input$shapefiles
+    if ("Contiguous USA" %in% input$shapefiles) {
+      regions <- indv.states
+    } else {
+      regions <- input$shapefiles
+    }
     # Get basal area for spp & state combos
     subset.tot.ba <- tot.ba[spp_code %in% id & state %in% regions]
     # Get total basal area for selected region
@@ -340,6 +342,12 @@ server <- function(input, output, session) {
       use.names = T,
       fill = T,
       idcol = F)
+    selected.states <- unique(subset.tot.ba$state)
+    selected.states <- selected.states[-length(selected.states)]
+    selected.states <- selected.states[order(selected.states)]
+    selected.states <- c(selected.states, "Total")
+    subset.tot.ba$state <- factor(subset.tot.ba$state,
+                                  levels = selected.states)
     
     # Percent proportion bar chart
     ggplot(subset.tot.ba, aes(x = state, y = tot_ba, fill = spp_code)) +
@@ -351,6 +359,43 @@ server <- function(input, output, session) {
                           name = "Species") 
     }
   })#end barchart code
+  
+  output$barchart.download <- renderUI({
+    if (length(input$scientific.name) > 1 |
+        length(input$common.name) > 1) {
+    tagList(selectInput("file.type.barchart",
+                "Choose File Type for Download",
+                choices = list(
+                  "PNG" = "png",
+                  "PDF" = "pdf",
+                  "TIFF" = "tiff"
+                )),
+    
+    numericInput("dpi.barchart",
+                 "DPI",
+                 min = 150,
+                 max = 3000,
+                 step = 50,
+                 value = 300),
+    
+    numericInput("height.barchart",
+                 "Height of Figure (in)",
+                 min = 0,
+                 max = NA,
+                 value = 3,
+                 step = 0.5),
+    
+    numericInput("width.barchart",
+                 "Width of Figure (in)",
+                 min = 0,
+                 max = NA,
+                 value = 4.5,
+                 step = 0.5),
+    
+    downloadButton("download.barchart",
+                   "Download Graph")
+    )}
+  }) # end barchart download UI code
 
   ### Map code
   ### Reactive to map button
@@ -470,7 +515,7 @@ server <- function(input, output, session) {
     
    }) # end outputPlot for map
   
-  plotInput <- function() {
+  mapInput <- function() {
     if (input$theme.customization == "two.color.gradient") {
       # two color gradient
       map() +
@@ -519,20 +564,62 @@ server <- function(input, output, session) {
   
   output$download.map <- downloadHandler(
     filename = function() {
-      paste0(gsub(" ", "", input$scientific.name, fixed = T), ".", input$file.type)
+      paste0(gsub(" ", "", input$scientific.name, fixed = T), ".", input$file.type.map)
       },
     content = function(file) {
       ggsave(file, 
-             plot = plotInput(),
-             device = input$file.type,
-             dpi = input$dpi,
-             width = input$width,
-             height = input$height,
+             plot = mapInput(),
+             device = input$file.type.map,
+             dpi = input$dpi.map,
+             width = input$width.map,
+             height = input$height.map,
              units = "in")
       }
   ) # end download handler
   
+  barchartInput <- function(){
+    # Get ID for select spp
+    id <- db$spp_code[db$scientific_name %in% input$scientific.name]
+    # Get scientific & common names for select spp
+    sci.name <- db$scientific_name[db$spp_code %in% id]
+    com.name <- db$common[db$spp_code %in% id]
+    # Get region for entered states
+    regions <- input$shapefiles
+    # Get basal area for spp & state combos
+    subset.tot.ba <- tot.ba[spp_code %in% id & state %in% regions]
+    # Get total basal area for selected region
+    sum.tot.ba <- subset.tot.ba[, .(tot_ba = sum(tot_ba)), by = spp_code][, state := "Total"]
+    # Recombine datatable
+    subset.tot.ba <- rbindlist(
+      list(subset.tot.ba, sum.tot.ba),
+      use.names = T,
+      fill = T,
+      idcol = F)
+    
+    # Percent proportion bar chart
+    ggplot(subset.tot.ba, aes(x = state, y = tot_ba, fill = spp_code)) +
+      geom_bar(position = "fill", stat = "identity") +
+      scale_y_continuous(labels = percent_format()) +
+      theme_bw() + 
+      labs(x = "States", y = "Percentage of Total Basal Area in State") +
+      scale_fill_discrete(labels = sci.name,
+                          name = "Species") 
+  }
   
+  output$download.barchart <- downloadHandler(
+    filename = function() {
+      paste0(gsub(" ", "", input$scientific.name, fixed = T), ".", input$file.type.barchart)
+    },
+    content = function(file) {
+      ggsave(file, 
+             plot = barchartInput(),
+             device = input$file.type.barchart,
+             dpi = input$dpi.barchart,
+             width = input$width.barchart,
+             height = input$height.barchart,
+             units = "in")
+    }
+  ) # end download handler
   
 } #end server  
   

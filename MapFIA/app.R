@@ -44,6 +44,10 @@ ui <- fluidPage(
   # Sidebar with a slider input for number of bins
   sidebarLayout(
     sidebarPanel(
+
+# sidebar inputs ----------------------------------------------------------
+
+      
       selectizeInput("scientific.name",
                   "Scientific Name of Organism",
                   choices = db$scientific_name,
@@ -91,6 +95,9 @@ ui <- fluidPage(
       uiOutput("conditional.theme.customization")
     ),
 
+# main panel --------------------------------------------------------------
+
+
     mainPanel(
       plotOutput("map"),
       
@@ -136,7 +143,10 @@ ui <- fluidPage(
   )
 )
 
-# Define server logic required to draw a histogram
+
+# server code -------------------------------------------------------------
+
+
 server <- function(input, output, session) {
   
   ### Reactive code chunk updating common name field if species selected by scientific name
@@ -153,6 +163,9 @@ server <- function(input, output, session) {
   })
   
   
+
+# selecting states by region ----------------------------------------------
+
   
   ### For selecting states by region
   ### Regions based on this map (http://www.pathwaystoscience.org/IBPImages/maps/smallusa.gif)
@@ -206,6 +219,9 @@ server <- function(input, output, session) {
       
     }
   })
+
+# conditional UI if spp > 1 -----------------------------------------------
+
   
   ### Conditional part of side panel - show if selected species is > 1
   output$conditional.map.options <- renderUI({
@@ -224,6 +240,9 @@ server <- function(input, output, session) {
       )
     }
   })
+
+# map theme inputs -------------------------------------------------
+
   
   ### Conditional map theme customization
   output$conditional.theme.customization <- renderUI({
@@ -315,6 +334,9 @@ server <- function(input, output, session) {
       )
     }
   })
+
+# barchart code -----------------------------------------------------------
+
   
   ### Barchart code
   ### Conditional - needs >=2 "regions" selected to display
@@ -397,6 +419,9 @@ server <- function(input, output, session) {
     )}
   }) # end barchart download UI code
 
+# map code ----------------------------------------------------------------
+
+
   ### Map code
   ### Reactive to map button
   map <- eventReactive(input$go, {
@@ -436,8 +461,9 @@ server <- function(input, output, session) {
           data = gg.usa,
           aes(x = long, y = lat, group = group),
           fill = "transparent",
-          color = "black"
-        )
+          color = "black") +
+        ggtitle(paste("Basal area per pixel of", input$common.name)) +
+        theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
     } else {
       # plot just selected state shapefiles
       # Crop raster to extent of selected polygons
@@ -454,13 +480,17 @@ server <- function(input, output, session) {
           data = sub.states,
           aes(x = long, y = lat, group = group),
           fill = NA,
-          color = "black"
-        )
+          color = "black") +
+        ggtitle(paste("Basal area per pixel of", input$common.name)) +
+        theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
     }
     
     
   }) # end map generating code, responsive to go button
         
+
+# map aesthetics ----------------------------------------------------------
+
      
   output$map <- renderPlot({
     # This part here v needs to be reactive to changing plot aesthetics
@@ -472,9 +502,8 @@ server <- function(input, output, session) {
                             high = input$high,
                             na.value = "white",
                             name = "Average Basal Area \n per Acre") +
-        theme_void() +
-        ggtitle(paste("Basal area per pixel of", input$common.name)) +
-        theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+        theme_void()
+        
       
     } else if (input$theme.customization == "div.gradient") { 
       #diverging gradient fill
@@ -486,9 +515,7 @@ server <- function(input, output, session) {
           midpoint = input$midpoint,
           na.value = "white",
           name = "Average Basal Area \n per Acre") +
-        theme_void() +
-        ggtitle(paste("Basal area per pixel of", input$common.name)) +
-        theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+        theme_void() 
       
     } else { # n.gradient fill
       if (input$direction == "FALSE") { # normal direction of palette
@@ -497,9 +524,7 @@ server <- function(input, output, session) {
                                na.value = "white",
                                direction = 1,
                                name = "Average Basal Area \n per Acre") +
-          theme_void() +
-          ggtitle(paste("Basal area per pixel of", input$common.name)) +
-          theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+          theme_void() 
         
       } else { # reverse direction
         map() +
@@ -507,13 +532,14 @@ server <- function(input, output, session) {
                                na.value = "white",
                                direction = -1,
                                name = "Average Basal Area \n per Acre") +
-          theme_void() +
-          ggtitle(paste("Basal area per pixel of", input$common.name)) +
-          theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+          theme_void() 
       }
     } # end n.gradient fill direction flow
     
    }) # end outputPlot for map
+
+# code for download buttons -----------------------------------------------
+
   
   mapInput <- function() {
     if (input$theme.customization == "two.color.gradient") {

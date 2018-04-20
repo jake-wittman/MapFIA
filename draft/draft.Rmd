@@ -20,4 +20,14 @@ I'm currently trying to figure out some way to host the data in googledrive and 
 
 There are also a few minor changes I might still make. I'm not sure I like the current layout of my app.
 
-3) 
+3) Screenshots of app:
+
+
+![](app1.png)
+
+
+![](app2.png)
+
+
+![](app3.png)
+

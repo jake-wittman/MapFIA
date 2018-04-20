@@ -34,7 +34,6 @@ states <- c("Contiguous USA", indv.states, "Northeast", "Mid-Atlantic", "Midwest
             "Southwest", "Mountain West", "Pacific West")
 
 
-
 # NOTE: Maybe need to add something that this is only for the contiguous US?
 ui <- fluidPage(
 
@@ -371,7 +370,7 @@ server <- function(input, output, session) {
                                   levels = selected.states)
     
     # Percent proportion bar chart
-    ggplot(subset.tot.ba, aes(x = state, y = tot_ba, fill = spp_code)) +
+    ggplot(subset.tot.ba, aes(x = state_abrv, y = tot_ba, fill = spp_code)) +
       geom_bar(position = "fill", stat = "identity") +
       scale_y_continuous(labels = percent_format()) +
       theme_bw() + 
@@ -461,8 +460,7 @@ server <- function(input, output, session) {
           aes(x = long, y = lat, group = group),
           fill = "transparent",
           color = "black") +
-        ggtitle(paste("Basal area per pixel of", input$common.name)) +
-        theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+        ggtitle(paste("Basal area per pixel of", paste(input$common.name, collapse = ", "))) 
     } else {
       # plot just selected state shapefiles
       # Crop raster to extent of selected polygons
@@ -480,8 +478,7 @@ server <- function(input, output, session) {
           aes(x = long, y = lat, group = group),
           fill = NA,
           color = "black") +
-        ggtitle(paste("Basal area per pixel of", input$common.name)) +
-        theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+        ggtitle(paste("Basal area per pixel of", paste(input$common.name, collapse = ", "))) 
     }
     
     
@@ -501,7 +498,8 @@ server <- function(input, output, session) {
                             high = input$high,
                             na.value = "white",
                             name = "Average Basal Area \n per Acre") +
-        theme_void()
+        theme_void() +
+        theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
         
       
     } else if (input$theme.customization == "div.gradient") { 
@@ -514,7 +512,8 @@ server <- function(input, output, session) {
           midpoint = input$midpoint,
           na.value = "white",
           name = "Average Basal Area \n per Acre") +
-        theme_void() 
+        theme_void() +
+        theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
       
     } else { # n.gradient fill
       if (input$direction == "FALSE") { # normal direction of palette
@@ -523,7 +522,8 @@ server <- function(input, output, session) {
                                na.value = "white",
                                direction = 1,
                                name = "Average Basal Area \n per Acre") +
-          theme_void() 
+          theme_void() +
+          theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
         
       } else { # reverse direction
         map() +
@@ -531,7 +531,8 @@ server <- function(input, output, session) {
                                na.value = "white",
                                direction = -1,
                                name = "Average Basal Area \n per Acre") +
-          theme_void() 
+          theme_void() +
+          theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
       }
     } # end n.gradient fill direction flow
     
@@ -622,7 +623,7 @@ server <- function(input, output, session) {
       idcol = F)
     
     # Percent proportion bar chart
-    ggplot(subset.tot.ba, aes(x = state, y = tot_ba, fill = spp_code)) +
+    ggplot(subset.tot.ba, aes(x = state_abrv, y = tot_ba, fill = spp_code)) +
       geom_bar(position = "fill", stat = "identity") +
       scale_y_continuous(labels = percent_format()) +
       theme_bw() + 

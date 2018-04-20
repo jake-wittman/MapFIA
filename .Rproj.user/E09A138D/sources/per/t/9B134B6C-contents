@@ -1,0 +1,33 @@
+---
+title: "App Draft - Map FIA"
+author: "Jake Wittman"
+date: "April 20, 2018"
+output: pdf_document
+---
+1) Since submitting my app proposal, I have finished almost all the features I want to include in the app. Users have the ability to:
+  - generate maps of the distribution and basal area per acre of any of the tree species in the US Forest Service data across the contiguous US
+  - select any combination of the lower 48 states for more fine scale mapping
+  - select more than one species for mapping the combined distribution and basal area (there likely will be limits on how many species can be selected, as these rasters are rather large and take a long time to operate on, but I don't know what that limit is/it will be dependent on the server/users computer)
+  - if more than one species is selected, users can choose to produce plots that show only where the two species co-occur and their combined basal area at the co-occurrence.
+  - adjust the number of pixels being plotted (decreasing the number of pixels makes crappier looking maps but makes them faster)
+  - adjust some of the aesthetics of the plot - mainly the color scheme being used to represent the basal area information
+  - if more than two species are selected for plotting, the app also produces a proportional bar plot showing what proportion of the total basal area of the *n* species selected is due to each individual species. It will also break that down across every state selected
+  - Both the maps and the proportional bar plots can be downloaded as PNG, PDF, or TIFF files and users can specify the DPI, height, and width of those images
+  
+2) The app can run locally, so long as the user has downloaded the FIA data from the US FS website on their computer and put it in the data folder. One issue with this is that for every genus in this data set with more than one species, I combined all the species level data into one aggregate genus raster. These rasters are not included in the US FS data. The other is that I wrote a script that ran for 12 days (!!) going through every raster in the dataset, masked them by state and calculated the total basal area per acre in each state to get the data for the proportional bar chart. This data set is also not available on the US FS website.  
+
+I'm currently trying to figure out some way to host the data in googledrive and have users be able to access it there (so they can access my additional raster files and data files), but I'm not optimistic that this will be successful. I'm not sure what other options I have. I am planning to talk to a colleague at the Forest Service about the possibility of them hosting my app alongside their data but that probably won't be completed by the end of the semester.  
+
+There are also a few minor changes I might still make. I'm not sure I like the current layout of my app.
+
+3) Screenshots of app:
+
+
+![](app1.png)
+
+
+![](app2.png)
+
+
+![](app3.png)
+

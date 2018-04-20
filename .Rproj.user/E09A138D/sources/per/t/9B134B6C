@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1524258268161.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1182725684",
+    "id" : "9B134B6C",
+    "lastKnownWriteTime" : 1524258378,
+    "last_content_update" : 1524258378341,
+    "path" : "~/MapFIA/draft/draft.Rmd",
+    "project_path" : "draft/draft.Rmd",
+    "properties" : {
+        "cursorPosition" : "28,13",
+        "scrollLine" : "14"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

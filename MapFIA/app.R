@@ -311,7 +311,6 @@ server <- function(input, output, session) {
                          "Brown to blue" = "BrBG",
                          "Pink to green" = "PiYG",
                          "Purple to green" = "PRGn",
-                         "Orange to purple" = "PuOR",
                          "Red to blue" = "RdBu",
                          "Red to grey" = "RdGy",
                          "Red to yellow to blue" = "RdYlBu",

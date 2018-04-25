@@ -1,3 +1,5 @@
 .httr-oauth
 data/
 MapFIA/raster.files
+
+MapFIA/NArasters/

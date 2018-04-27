@@ -460,7 +460,7 @@ server <- function(input, output, session) {
           aes(x = long, y = lat, group = group),
           fill = "transparent",
           color = "black") +
-        ggtitle(paste("Basal area per pixel of", paste(input$common.name, collapse = ", "))) 
+        ggtitle(paste("Basal area per acre of", paste(input$common.name, collapse = ", "))) 
     } else {
       # plot just selected state shapefiles
       # Crop raster to extent of selected polygons
@@ -478,7 +478,7 @@ server <- function(input, output, session) {
           aes(x = long, y = lat, group = group),
           fill = NA,
           color = "black") +
-        ggtitle(paste("Basal area per pixel of", paste(input$common.name, collapse = ", "))) 
+        ggtitle(paste("Basal area per acre of", paste(input$common.name, collapse = ", "))) 
     }
     
     
@@ -550,7 +550,7 @@ server <- function(input, output, session) {
                             na.value = "white",
                             name = "Average Basal Area \n per Acre") +
         theme_void() +
-        ggtitle(paste("Basal area per pixel of", input$common.name)) +
+        ggtitle(paste("Basal area per acre of", input$common.name)) +
         theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
     } else if (input$theme.customization == "div.gradient") { 
       #diverging gradient fill
@@ -563,7 +563,7 @@ server <- function(input, output, session) {
           na.value = "white",
           name = "Average Basal Area \n per Acre") +
         theme_void() +
-        ggtitle(paste("Basal area per pixel of", input$common.name)) +
+        ggtitle(paste("Basal area per acre of", input$common.name)) +
         theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
     } else { # n.gradient fill
       if (input$direction == "FALSE") { # normal direction of palette
@@ -573,7 +573,7 @@ server <- function(input, output, session) {
                                direction = 1,
                                name = "Average Basal Area \n per Acre") +
           theme_void() +
-          ggtitle(paste("Basal area per pixel of", input$common.name)) +
+          ggtitle(paste("Basal area per acre of", input$common.name)) +
           theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
       } else { # reverse direction
         map() +
@@ -582,7 +582,7 @@ server <- function(input, output, session) {
                                direction = -1,
                                name = "Average Basal Area \n per Acre") +
           theme_void() +
-          ggtitle(paste("Basal area per pixel of", input$common.name)) +
+          ggtitle(paste("Basal area per acre of", input$common.name)) +
           theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
       }
     }

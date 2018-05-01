@@ -1,5 +1,0 @@
-<<<<<<< HEAD
-[{"allow_restart":true,"alt_buffer":false,"autoclose":1,"buffered_output":"\n\n","caption":"Terminal 1","channel_id":"6029","channel_mode":1,"child_procs":false,"cols":80,"cwd":"","exit_code":15,"handle":"B7572079","interaction_mode":2,"max_output_lines":1000,"restarted":false,"rows":25,"shell_type":3,"show_on_output":false,"terminal_sequence":1,"title":"","track_env":false,"zombie":false}]
-=======
-[]
->>>>>>> parent of 353b209... Auto stash before merge of "master" and "origin/master"

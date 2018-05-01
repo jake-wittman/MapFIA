@@ -1,0 +1,49 @@
+---
+title: "Map FIA"
+author: "Jake Wittman"
+output: html_document
+---
+## App Purpose
+   
+   The purpose of this app is to provide an easy-to-use interface for anyone who is interested in mapping the distribution of tree species as well as their basal area per acre in the US. The US Forest Service collects data yearly (the Forest Inventory Analysis, or FIA) from plots across the country on the distribution of tree species in the US.  USFS personnel have created models that take this data along with environmental data and generate distributions and basal areas for over 300 species of trees. This distribution data is hidden deep within the USFS website and is raster data, so it requires knowledge of GIS to work with. My aim with this app is to make this data more accessible to the general public, but especially researchers, foresters, managers, etc. who may find distribution data helpful for identifying research plots or addressing management issues.   
+   
+   
+## Availability
+   
+   Currently, this app can only be run locally by individuals with the raster data set and the code for the app. The raster files are quite large and in total are about 8 gigabytes in size. Additionally, the app requires the raster files to be loaded into memory which quickly fills up the 1 gigabyte provided by shinyapps.io. That said, I have plans to talk with the Forest Service about hosting the app on their servers so hopefully this app will be made public in the future. 
+   
+   
+## Data Sources
+  
+   This data comes from the U.S. Forest Service Data Archive and more specifically from: 
+   
+   
+   >Wilson, Barry Tyler; Lister, Andrew J.; Riemann, Rachel I.; Griffith, Douglas M. 2013. Live tree species basal area of the contiguous United States (2000-2009). Newtown Square, PA: USDA Forest Service, Rocky Mountain Research Station. https://doi.org/10.2737/RDS-2013-0013 
+   
+   The raster data I use can be accessed by following the URL in the citation above, although I have added a few raster files not contained in the original set. Specifically, for every genus in the dataset with more than one species, I combined all the rasters to create genus level distribution and basal area information. The shapefiles used to map out the states can be obtained from the maps package of R, but I specifically draw them from a folder contained with my app. I have two versions of the app currently: one that accesses rasters stored locally on the users computer and the other which downloads the rasters from a google drive account that is storing all of them. I have turned in the version that accesses the rasters remotely, since I can't upload all my data to github.
+   
+## App Functions
+
+   At it's most basic, this app allows a user to select a tree species for which they want to see the distribution and basal area for and plot that information on any of the 48 contiguous states in the US. Beyond that users can:
+   
+   * select a species from either it's scientific name or common name. The two input fields are reactive to each other, so they will both update once the user makes a choice. Species can be selected by typing in their names or by scrolling through a drop down menu.
+   * select any combination of the 48 contiguous US states for mapping. There are specific options to easily select all 48 ("Contiguous US") or to select by different regions (e.g. "Pacific West" or "Northeast"). States can be selected by typing in their names or by scrolling through a drop down menu.
+   * adjust the numbers of pixels used in the production of each plot. Each raster starts with over 200 million pixels which takes a long time to process for plotting. By adjusting the numbers of pixels used, the app will produce plots more quickly but at a courser resolution. The allows the user to balance performance/quality based on their needs.
+   * select more than one species of tree. If users select more than one species, the app will aggregate the rasters for all the species selected and plot their combined distribution and basal area. Alternatively, if users select more than one species they can choose to have the plot display only areas where the species occur together. This option shows up once users select more than one tree species.
+   * adjust the color palette showing the basal area per acre in each pixel. There are three different palette range options, each with their own specific color settings the user can adjust.
+   * save the map in one of three file formats (.png, .tiff, or .pdf), at the desired resolution, and for a desired height/width.
+   * if the user selects more than one tree species, the app also produces a proportional bar chart which shows the relative proportion of total basal area each species makes up over the entire mapped region as well as each individual state mapped. Users also have the option of saving this plot if they want.
+   
+## Programming challenges
+
+   The first challenge I faced was learning how to map and work with rasters in R. I have done some work in ArcMap before so I'm familiar with the language associated with GIS and mapping, but I had to find resources and play around with files for a while before I was confident enough to start working on the actual app. I also had to spend some time playing around with different functions and ways to map in R. As is normal with R, there are multiple ways to do the same thing and some of them work faster than others. Because the mapping can take a while, I wanted to do what I could to reduce processing time.  
+   I knew I wanted to provide genus level summary rasters, which weren't originally available from the data. It took me a while to figure out how to program a script that ran through the rasters and summarized them by genus (titled "merge_rasters.R" in the final folder). Similarly, I knew it would be faster for me to create a csv with the proportional basal area data for the proportional bar charts so I had to write code (titled "basal_area_summary.R" in the final folder) that ran through each species raster and provided the total sum of the basal area for that species in each state (48 states * 324 rasters). Once I got this code to work I had to let it run for 12 days before it finished.   
+   Early on, I knew that the size of all the rasters would be a problem for any app hosted on a server so I had to figure out a way to store the data remotely and access it for the app. I eventually settled on creating a specific google account for this app and storing all the rasters in the associated google drive. I have a version of the app that pulls the rasters from this google drive, but it is a fair bit slower than the app that works with the files locally. Unfortunately, this solution did not help with hosting the app on shinyapps.io as they limit users to 1 gb of memory, and the rasters plus plots produced quickly exceed 1 gb in size. 
+   
+## Division of Labor
+
+  I did all the work on this project.
+  
+## Future Work
+
+  The first thing I hope to do is find a home for this app on either the US Forest Service website or on a University of Minnesota extension website. I would also like to include the ability to produce multi-panel plots showing different species separately. It would also be useful to give users the ability to summarize different aspects of each raster file, like average basal area. I'd also like to give users the ability to upload their own raster files, perhaps of distributions of species or organisms that are not included in the database I draw from.

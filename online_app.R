@@ -9,10 +9,10 @@ library(data.table)
 library(scales)
 library(rasterVis)
 library(viridis)
+library(maptools)
 
 # TO DO:
-# Put in more options to customize resulting graphs - make customizations an "Advanced Settings" type deal
-# Fix barchart when many states are on x axis
+# Fix title: BA per acre and center it
 
 # Global data 
 db <- fread("data/summary_table_all.csv") # db with name info
@@ -32,6 +32,8 @@ gg.usa <- merge(gg.usa, usa@data, by = "id")
 
 states <- c("Contiguous USA", indv.states, "Northeast", "Mid-Atlantic", "Midwest", "Southeast", 
             "Southwest", "Mountain West", "Pacific West")
+drive_auth(oauth_token = "shiny_app_token.rds")
+
 
 
 # NOTE: Maybe need to add something that this is only for the contiguous US?
@@ -376,7 +378,8 @@ server <- function(input, output, session) {
       theme_bw() + 
       labs(x = "States", y = "Percentage of Total Basal Area in State") +
       scale_fill_discrete(labels = sci.name,
-                          name = "Species") 
+                          name = "Species") +
+      theme(axis.text.x = element_text(angle = 90))
     }
   })#end barchart code
   
@@ -430,22 +433,53 @@ server <- function(input, output, session) {
     com.name <- db$common[db$spp_code %in% id]
     # Get region for entered states
     regions <- input$shapefiles
-    if (length(id) > 1) {
-      # For plotting more than 1 spp
+    if (length(id) > 1) {# For plotting more than 1 spp
+      # Download rasters
+      # Check if any of the needed rasters have been downloaded already
+      if (all(paste0(id, ".img") %in% list.files()) == TRUE){
+        # do nothing, all files are downloaded already
+      } else if (any(paste0(id, ".img") %in% list.files()) == TRUE) {
+        downloads <- id[paste0(id, ".img") %in% list.files() == F]
+        sapply(downloads, function(x) {
+          drive_download(paste0(x, ".img"), path = paste0(x, ".img"))
+        })
+      } else if ((paste0(id, ".img") %in% list.files()) == FALSE) { # If no files have been downloaded yet
+        sapply(id, function(x) {
+          drive_download(paste0(x, ".img"), path = paste0(x, ".img"))
+        })
+      } 
+      # raster processing
       if (input$dist.options == "overlay") {
         # for plotting overlay
-        paths <- paste0("raster.files/", id, ".img")
-        spp.raster <- reclassify(sum(stack(paths)), c(-0.001, 0.001, NA))
+        paths <- paste0(id, ".img") # get paths
+        # sum rasters, then reclassify for plotting
+        spp.raster <- sum(stack(paths))
       } else {
         #for plotting co-occurence
-        paths <- paste0("raster.files/", id, ".img")
-        paths <- lapply(paths, raster)
-        paths <- lapply(paths, reclassify, c(-0.001, 0.001, NA))
+        paths <- paste0(id, ".img")
+        paths <- lapply(paths, raster) # get rasters
+        # reclassify first for proper co-occurrence summing 
+        #paths <- lapply(paths, reclassify, c(-0.001, 0.001, NA)) 
+        # sum rasters
         spp.raster <- sum(stack(paths))
       } # end multiple spp chunk
       
-    } else {
-      spp.raster <- reclassify(raster(paste0("raster.files/", id, ".img")), c(-0.001, 0.001, NA))
+    } else { # If only 1 species selected
+      # Check to see if rasters have been downloaded
+      if (all(paste0(id, ".img") %in% list.files()) == TRUE){
+        # do nothing, all files are downloaded already
+      } else if (any(paste0(id, ".img") %in% list.files()) == TRUE) {
+        downloads <- id[paste0(id, ".img") %in% list.files() == F]
+        sapply(downloads, function(x) {
+          drive_download(paste0(x, ".img"), path = paste0(x, ".img"))
+        })
+      } else if ((paste0(id, ".img") %in% list.files()) == FALSE) { # If no files have been downloaded yet
+        sapply(id, function(x) {
+          drive_download(paste0(x, ".img"), path = paste0(x, ".img"))
+        })
+      } 
+      spp.raster <- raster(paste0(id, ".img"))
+      
     }
     if ("Contiguous USA" %in% regions) {
       # If USA is selected, plot whole US
@@ -460,7 +494,7 @@ server <- function(input, output, session) {
           aes(x = long, y = lat, group = group),
           fill = "transparent",
           color = "black") +
-        ggtitle(paste("Basal area per acre of", paste(input$common.name, collapse = ", "))) 
+        ggtitle(paste("Basal area per acre of", input$common.name)) 
     } else {
       # plot just selected state shapefiles
       # Crop raster to extent of selected polygons
@@ -478,7 +512,7 @@ server <- function(input, output, session) {
           aes(x = long, y = lat, group = group),
           fill = NA,
           color = "black") +
-        ggtitle(paste("Basal area per acre of", paste(input$common.name, collapse = ", "))) 
+        ggtitle(paste("Basal area per acre of", input$common.name)) 
     }
     
     
@@ -552,6 +586,7 @@ server <- function(input, output, session) {
         theme_void() +
         ggtitle(paste("Basal area per acre of", input$common.name)) +
         theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+      
     } else if (input$theme.customization == "div.gradient") { 
       #diverging gradient fill
       map() +
@@ -565,6 +600,7 @@ server <- function(input, output, session) {
         theme_void() +
         ggtitle(paste("Basal area per acre of", input$common.name)) +
         theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+      
     } else { # n.gradient fill
       if (input$direction == "FALSE") { # normal direction of palette
         map() +
@@ -575,6 +611,7 @@ server <- function(input, output, session) {
           theme_void() +
           ggtitle(paste("Basal area per acre of", input$common.name)) +
           theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+        
       } else { # reverse direction
         map() +
           scale_fill_distiller(palette = input$palette,
@@ -584,6 +621,7 @@ server <- function(input, output, session) {
           theme_void() +
           ggtitle(paste("Basal area per acre of", input$common.name)) +
           theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+        
       }
     }
   }
@@ -629,7 +667,8 @@ server <- function(input, output, session) {
       theme_bw() + 
       labs(x = "States", y = "Percentage of Total Basal Area in State") +
       scale_fill_discrete(labels = sci.name,
-                          name = "Species") 
+                          name = "Species") +
+      theme(axis.text.x = element_text(angle = 90))
   }
   
   output$download.barchart <- downloadHandler(

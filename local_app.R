@@ -135,6 +135,8 @@ ui <- fluidPage(
       
       uiOutput("barchart.download"),
       
+      p("Creator: Jacob T. Wittman, Contact: wittm094@umn.edu"),
+      
       div("All data used in this app comes from:", style = "color:black"),
       
       div("Wilson, Barry Tyler; Lister, Andrew J.; Riemann, Rachel I.; Griffith, Douglas M. 2013. Live tree species basal area of the contiguous United States (2000-2009). Newtown Square, PA: USDA Forest Service, Rocky Mountain Research Station.", style = "color:black"),

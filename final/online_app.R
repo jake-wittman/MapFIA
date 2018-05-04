@@ -11,38 +11,33 @@ library(rasterVis)
 library(viridis)
 library(maptools)
 
-# TO DO:
-# Fix title: BA per acre and center it
-
 # Global data 
 db <- fread("data/summary_table_all.csv") # db with name info
 # Basal area data
 tot.ba <- fread("data/basal_area_summary.csv")
 # State shapefiles
-
 usa <- readOGR("data/shapefiles", "states")
 usa <- subset(usa, STATE_NAME != "Hawaii" & STATE_NAME != "Alaska") # contig. usa shapefile
 indv.states <- sort(as.character(unique(usa$STATE_NAME)))
-# conver shapefile to format usable by ggplot
+# convert shapefile to format usable by ggplot
 CRS <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,-0,-0,-0,0 +units=m +no_defs"
 usa <- spTransform(usa, CRS)
 usa@data$id <- rownames(usa@data)
 gg.usa <- fortify(usa, region = "id")
 gg.usa <- merge(gg.usa, usa@data, by = "id")
-
+# Create list of all statefiles
 states <- c("Contiguous USA", indv.states, "Northeast", "Mid-Atlantic", "Midwest", "Southeast", 
             "Southwest", "Mountain West", "Pacific West")
+# Authentication to access raster files on google drive
 drive_auth(oauth_token = "shiny_app_token.rds")
 
 
-
-# NOTE: Maybe need to add something that this is only for the contiguous US?
+# UI ----------------------------------------------------------------------
 ui <- fluidPage(
 
   # Application title
   titlePanel("Mapping Tree Distributions"),
-
-  # Sidebar with a slider input for number of bins
+  
   sidebarLayout(
     sidebarPanel(
 
@@ -150,13 +145,15 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   
-  ### Reactive code chunk updating common name field if species selected by scientific name
+
+# Code for scientific name and common name reactivity in input ------------
+
   observeEvent(input$scientific.name, {
     updateSelectizeInput(session,
                          "common.name",
                          selected = db$common[db$scientific_name %in% input$scientific.name])
   })
-  ### Reactive code chunk updating scientific name field if species selected by common name
+  
   observeEvent(input$common.name, {
     updateSelectizeInput(session,
                          "scientific.name",
@@ -221,10 +218,8 @@ server <- function(input, output, session) {
     }
   })
 
-# conditional UI if spp > 1 -----------------------------------------------
+# conditional UI if spp selected > 1 -----------------------------------------------
 
-  
-  ### Conditional part of side panel - show if selected species is > 1
   output$conditional.map.options <- renderUI({
     if (length(input$scientific.name) > 1 |
         length(input$common.name) > 1) {
@@ -242,11 +237,10 @@ server <- function(input, output, session) {
     }
   })
 
-# map theme inputs -------------------------------------------------
+# conditional map theme customization -------------------------------------------------
 
-  
-  ### Conditional map theme customization
   output$conditional.theme.customization <- renderUI({
+    # two color gradient map
     if (input$theme.customization == "two.color.gradient") {
       tagList(
         textInput("low",
@@ -262,6 +256,7 @@ server <- function(input, output, session) {
     }
     
     else if (input$theme.customization == "div.gradient") {
+      # diverging gradient map
       tagList(
         textInput("low",
                   label = "Low color",
@@ -287,6 +282,7 @@ server <- function(input, output, session) {
       )
     }
     else if (input$theme.customization == "n.color.gradient") {
+      # n color gradient map
       tagList(
         selectizeInput("palette",
                        "Palette",
@@ -337,8 +333,6 @@ server <- function(input, output, session) {
 
 # barchart code -----------------------------------------------------------
 
-  
-  ### Barchart code
   ### Conditional - needs >=2 "regions" selected to display
   output$barchart <- renderPlot({
     if (length(input$scientific.name) > 1 |
@@ -364,6 +358,7 @@ server <- function(input, output, session) {
       use.names = T,
       fill = T,
       idcol = F)
+    # Order state list alphabetically
     selected.states <- unique(subset.tot.ba$state)
     selected.states <- selected.states[-length(selected.states)]
     selected.states <- selected.states[order(selected.states)]
@@ -382,6 +377,8 @@ server <- function(input, output, session) {
       theme(axis.text.x = element_text(angle = 90))
     }
   })#end barchart code
+
+# Barchart download UI code -----------------------------------------------
   
   output$barchart.download <- renderUI({
     if (length(input$scientific.name) > 1 |
@@ -422,8 +419,6 @@ server <- function(input, output, session) {
 
 # map code ----------------------------------------------------------------
 
-
-  ### Map code
   ### Reactive to map button
   map <- eventReactive(input$go, {
     # Get ID code for each spp
@@ -443,7 +438,8 @@ server <- function(input, output, session) {
         sapply(downloads, function(x) {
           drive_download(paste0(x, ".img"), path = paste0(x, ".img"))
         })
-      } else if ((paste0(id, ".img") %in% list.files()) == FALSE) { # If no files have been downloaded yet
+        # If no files have been downloaded yet
+      } else if ((paste0(id, ".img") %in% list.files()) == FALSE) { 
         sapply(id, function(x) {
           drive_download(paste0(x, ".img"), path = paste0(x, ".img"))
         })
@@ -451,7 +447,7 @@ server <- function(input, output, session) {
       # raster processing
       if (input$dist.options == "overlay") {
         # for plotting overlay
-        paths <- paste0(id, ".img") # get paths
+        paths <- paste0(id, ".img") # get file paths
         # sum rasters, then reclassify for plotting
         spp.raster <- sum(stack(paths))
       } else {
@@ -473,7 +469,8 @@ server <- function(input, output, session) {
         sapply(downloads, function(x) {
           drive_download(paste0(x, ".img"), path = paste0(x, ".img"))
         })
-      } else if ((paste0(id, ".img") %in% list.files()) == FALSE) { # If no files have been downloaded yet
+        # If no files have been downloaded yet
+      } else if ((paste0(id, ".img") %in% list.files()) == FALSE) { 
         sapply(id, function(x) {
           drive_download(paste0(x, ".img"), path = paste0(x, ".img"))
         })
@@ -520,11 +517,9 @@ server <- function(input, output, session) {
         
 
 # map aesthetics ----------------------------------------------------------
-
+# Reactive customization - will not need to go through the lengthy plot generating process to change how it looks
      
   output$map <- renderPlot({
-    # This part here v needs to be reactive to changing plot aesthetics
-    # but should not remake plot
     if (input$theme.customization == "two.color.gradient") {
       # two color gradient
       map() +
@@ -572,9 +567,8 @@ server <- function(input, output, session) {
     
    }) # end outputPlot for map
 
-# code for download buttons -----------------------------------------------
+# code for map download buttons -----------------------------------------------
 
-  
   mapInput <- function() {
     if (input$theme.customization == "two.color.gradient") {
       # two color gradient

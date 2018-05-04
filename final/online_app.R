@@ -36,14 +36,15 @@ drive_auth(oauth_token = "shiny_app_token.rds")
 ui <- fluidPage(
 
   # Application title
-  titlePanel("Mapping Tree Distributions"),
+  titlePanel(title = NULL),
   
   sidebarLayout(
     sidebarPanel(
 
 # sidebar inputs ----------------------------------------------------------
 
-      
+      img(height = 250, width = 250, src = "aukema_lab_logo.JPG"),
+
       selectizeInput("scientific.name",
                   "Scientific Name of Organism",
                   choices = db$scientific_name,
@@ -89,12 +90,15 @@ ui <- fluidPage(
                    ),
       
       uiOutput("conditional.theme.customization")
+
+     
     ),
 
 # main panel --------------------------------------------------------------
 
-
     mainPanel(
+      h1("Mapping Tree Distributions"),
+      
       plotOutput("map"),
       
       selectInput("file.type.map",
@@ -131,8 +135,13 @@ ui <- fluidPage(
       
       plotOutput("barchart"),
       
-      uiOutput("barchart.download")
+      uiOutput("barchart.download"),
       
+      div("All data used in this app comes from:", style = "color:black"),
+      
+      div("Wilson, Barry Tyler; Lister, Andrew J.; Riemann, Rachel I.; Griffith, Douglas M. 2013. Live tree species basal area of the contiguous United States (2000-2009). Newtown Square, PA: USDA Forest Service, Rocky Mountain Research Station.", style = "color:black"),
+      
+      a("https://doi.org/10.2737/RDS-2013-0013", href = "https://doi.org/10.2737/RDS-2013-0013")
     )
 
     

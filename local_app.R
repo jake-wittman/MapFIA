@@ -189,7 +189,7 @@ server <- function(input, output, session) {
     } else if ("Midwest" %in% input$shapefiles) {
       updateSelectizeInput(session,
                            "shapefiles",
-                           selected = c(input$shapefiles[!input$shapefiles %in% "Midwest"], "Illiois", "Indiana", 
+                           selected = c(input$shapefiles[!input$shapefiles %in% "Midwest"], "Illinois", "Indiana", 
                                         "Iowa", "Kansas", "Kentucky", "Michigan",
                                         "Minnesota", "Missouri", "Nebraska", "North Dakota", "Ohio",
                                         "South Dakota", "Wisconsin"))

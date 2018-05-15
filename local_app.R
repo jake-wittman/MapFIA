@@ -33,15 +33,22 @@ states <- c("Contiguous USA", indv.states, "Northeast", "Mid-Atlantic", "Midwest
 # UI ----------------------------------------------------------------------
 ui <- fluidPage(
 
-  # Application title
-  titlePanel(title = NULL),
+  # Application row
+  titlePanel(
+    fluidRow(
+      column(3, div(img(height = 200, width = 200, src = "aukema_lab_logo.JPG",
+                        style = "max-width: 200%; width: 100%, height: auto;"),
+                    style = "text-align: center;")),
+      column(9, div(br(), br(), h1("Mapping Tree Distributions"),
+                    style = "text-align: center;"))
+      
+      )
+    ), # End title
 
+# Main page chunk
   sidebarLayout(
+  # sidebar inputs ----------------------------------------------------------    
     sidebarPanel(
-
-# sidebar inputs ----------------------------------------------------------
-
-      img(height = 250, width = 250, src = "aukema_lab_logo.JPG"),
 
       selectizeInput("scientific.name",
                   "Scientific Name of Organism",
@@ -74,12 +81,24 @@ ui <- fluidPage(
       
       actionButton("go", "Generate Map"),
       
-      h3("Map Color Customization Options"),
+      h3("Map Customization Options"),
       
       helpText("The customization options below can be changed without regenerating the map."),
       
-      radioButtons("theme.customization",
+      h4("Map Aspect Ratio"),
+      
+      helpText("Adjust the aspect ratio if your map looks squashed or stretched."),
+      
+      numericInput("aspect.ratio",
                    NULL,
+                   min = 0.1,
+                   value = 0.7,
+                   step = 0.1),
+      
+      h4("Color Customization"),
+       
+      radioButtons("theme.customization",
+                   "Theme",
                    choices = list(
                      "two color gradient" = "two.color.gradient",
                      "diverging gradient" = "div.gradient",
@@ -87,67 +106,134 @@ ui <- fluidPage(
                      selected = "two.color.gradient"
                    ),
       
-      uiOutput("conditional.theme.customization")
+      uiOutput("conditional.theme.customization"),
+      
+      width = 3
       
     ),
 
 # main panel --------------------------------------------------------------
 
-
     mainPanel(
-      h1("Mapping Tree Distributions"),
       
-      plotOutput("map"),
-      
-      selectInput("file.type.map",
-                "Choose File Type for Download",
-                choices = list(
-                  "PNG" = "png",
-                  "PDF" = "pdf",
-                  "TIFF" = "tiff"
-                )),
-      
-      numericInput("dpi.map",
-                   "DPI",
-                   min = 150,
-                   max = 3000,
-                   step = 50,
-                   value = 300),
-      
-      numericInput("height.map",
-                   "Height of Figure (in)",
-                   min = 0,
-                   max = NA,
-                   value = 3,
-                   step = 0.5),
-      
-      numericInput("width.map",
-                   "Width of Figure (in)",
-                   min = 0,
-                   max = NA,
-                   value = 4.5,
-                   step = 0.5),
-      
-      downloadButton("download.map",
-                     "Download Map"),
-      
-      plotOutput("barchart"),
-      
-      uiOutput("barchart.download"),
-      
-      p("Creator: Jacob T. Wittman, Contact: wittm094@umn.edu"),
-      
-      div("All data used in this app comes from:", style = "color:black"),
-      
-      div("Wilson, Barry Tyler; Lister, Andrew J.; Riemann, Rachel I.; Griffith, Douglas M. 2013. Live tree species basal area of the contiguous United States (2000-2009). Newtown Square, PA: USDA Forest Service, Rocky Mountain Research Station.", style = "color:black"),
-      
-      a("https://doi.org/10.2737/RDS-2013-0013", href = "https://doi.org/10.2737/RDS-2013-0013")
-      
+      # Tabs
+      tabsetPanel(type = "tabs",
+                  
+                  tabPanel("Instructions", 
+                           
+                           h3("Overview"),
+                           
+                           p("The purpose of this app is to provide an easy-to-use interface for anyone who is interested in visualizing data on the distribution of tree species as well as their basal area per acre in the continental US. The maps you generate can be seen under the 'Map' tab above. If you choose to map two or more species, you can also click on the bar chart tab above that shows how much of the total basal area of the tree species you mapped is made up of each species. This data comes from the U.S. Forest Service Data Archive and more specifically from:"),
+                           div("Wilson, Barry Tyler; Lister, Andrew J.; Riemann, Rachel I.; Griffith, Douglas M. 2013. Live tree species basal area of the contiguous United States (2000-2009). Newtown Square, PA: USDA Forest Service, Rocky Mountain Research Station. https://doi.org/10.2737/RDS-2013-0013"),
+                           
+                           br(),
+                           
+                           h3("Instructions"),
+                           
+                           p("1) Select one or more tree species that you would like to map, either by their scientific name or their common name. The app will automatically fill in the other name field."),
+                           p(em("- If you select two or more tree species, you will have to choose whether you want to map their combined distributions or to map only where the selected species co-occur.")),
+                         p(strong(em("- The more species you pick, the longer it will take to produce your desired plot."))),
+                           p("2) Select the states you would like to include in your map."),
+                           p(em("- You can select all 48 contiguous states, or any combination of states. If you want to select states by a region (e.g. 'Midwest'), those options are at the bottom of the drop down menu.")),
+                           p("3) Select the number of pixels to plot."),
+                           p(strong(em("- The more pixels you select, the longer it will take to map. It is strongly recommended that you start with a low number of pixels until you have identified the plot you want to produce at a higher quality."))),
+                           p("4) If your plot appears squished or stretched, play with the aspect ratio."),
+                           p("5) Adjust your color-scheme as desired."),
+                           p("6) If you are happy with your map and wish to download it, select the file type, DPI, and dimensions and click the 'Download' button below the map. The same can be done below the proportional bar chart if you wish to download that plot.")
+                         ), # end introduction tab
+                  
+                  tabPanel("Map", 
+                           fluidRow(
+                             column(8,
+                                    plotOutput("map", width = "100%")
+                                    ),
+                           
+                           column(4,
+                             br(),# add a little space
+                             br(),
+                             helpText("The image you download will NOT appear with the same dimensions as the image displayed on this page."),
+                             selectInput(
+                               "file.type.map",
+                               "Choose File Type for Download",
+                               choices = list(
+                                 "PNG" = "png",
+                                 "PDF" = "pdf",
+                                 "TIFF" = "tiff"
+                                 )
+                             ),
+                             
+                               numericInput(
+                                 "dpi.map",
+                                 "DPI",
+                                 min = 150,
+                                 max = 3000,
+                                 step = 50,
+                                 value = 300
+                               ),
+                               
+                               numericInput(
+                                 "height.map",
+                                 "Height of Figure (in)",
+                                 min = 0,
+                                 max = NA,
+                                 value = 3,
+                                 step = 0.5
+                               ),
+                               
+                               numericInput(
+                                 "width.map",
+                                 "Width of Figure (in)",
+                                 min = 0,
+                                 max = NA,
+                                 value = 4.5,
+                                 step = 0.5
+                               ),
+                               
+                               downloadButton("download.map",
+                                              "Download Map")
+                             )
+                           )
+                          ),# end map tab
+                           
+                    tabPanel("Bar Chart",
+                             fluidRow(
+                               column(8,
+                                  plotOutput("barchart")
+                               ),
+                              column(4,
+                                  uiOutput("barchart.download")
+                              )
+                             )
+                    ) # end bar chart tab
+                  )# end tabset panel
+    ) # end main panel
+), # end side panel and main panel 
+
+
+# App info ----------------------------------------------------------------
+  fluidRow(
+    column(3,
+      p("Creator: Jacob T. Wittman, Contact: wittm094@umn.edu",
+        style = "font-size: 12px"),
+  
+        div("All data used in this app comes from:", style = "color:black; font-size: 12px"),
+  
+        div(
+    "Wilson, Barry Tyler; Lister, Andrew J.; Riemann, Rachel I.; Griffith, Douglas M. 2013. Live tree species basal area of the contiguous United States (2000-2009). Newtown Square, PA: USDA Forest Service, Rocky Mountain Research Station.",
+          style = "color:black; font-size: 12px"
+        ),
+  
+        a(
+          "https://doi.org/10.2737/RDS-2013-0013",
+          href = "https://doi.org/10.2737/RDS-2013-0013",
+          style = "font-size: 12px"
+        )
     )
+  )# app info
 
     
-  )
 )
+
 
 
 # server code -------------------------------------------------------------
@@ -360,7 +446,7 @@ server <- function(input, output, session) {
     # Get basal area for spp & state combos
     subset.tot.ba <- tot.ba[spp_code %in% id & state %in% regions]
     # Get total basal area for selected region
-    sum.tot.ba <- subset.tot.ba[, .(tot_ba = sum(tot_ba)), by = spp_code][, state := "Total"]
+    sum.tot.ba <- subset.tot.ba[, .(tot_ba = sum(tot_ba)), by = spp_code][, state := "Total"][, state_abrv := "Total"]
     # Recombine datatable
     subset.tot.ba <- rbindlist(
       list(subset.tot.ba, sum.tot.ba),
@@ -368,11 +454,11 @@ server <- function(input, output, session) {
       fill = T,
       idcol = F)
     # order state list alphabetically
-    selected.states <- unique(subset.tot.ba$state)
+    selected.states <- unique(subset.tot.ba$state_abrv)
     selected.states <- selected.states[-length(selected.states)]
     selected.states <- selected.states[order(selected.states)]
     selected.states <- c(selected.states, "Total")
-    subset.tot.ba$state <- factor(subset.tot.ba$state,
+    subset.tot.ba$state_abrv <- factor(subset.tot.ba$state_abrv,
                                   levels = selected.states)
     
     # Percent proportion bar chart
@@ -391,7 +477,10 @@ server <- function(input, output, session) {
   output$barchart.download <- renderUI({
     if (length(input$scientific.name) > 1 |
         length(input$common.name) > 1) {
-    tagList(selectInput("file.type.barchart",
+    tagList(br(),
+            br(),
+            helpText("The image you download will NOT appear with the same dimensions as the image displayed on this page."),
+      selectInput("file.type.barchart",
                 "Choose File Type for Download",
                 choices = list(
                   "PNG" = "png",
@@ -537,9 +626,13 @@ server <- function(input, output, session) {
                                name = "Average Basal Area \n per Acre") +
           theme_void() +
           theme(plot.title = element_text(hjust = 0.5, vjust = -0.5))
+        
       }
     } # end n.gradient fill direction flow
     
+    
+   }, height = function() {
+     input$aspect.ratio * session$clientData$output_map_width
    }) # end outputPlot for map
 
 # code for map download buttons -----------------------------------------------

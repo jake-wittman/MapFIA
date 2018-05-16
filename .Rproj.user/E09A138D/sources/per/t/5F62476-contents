@@ -1,0 +1,245 @@
+library(plyr)
+library(doParallel)
+library(raster)
+library(rgdal)
+library(ggplot2)
+library(viridis)
+library(rasterVis)
+library(ggthemes)
+library(maptools)
+
+
+PlotUSA <- function(raster, maxpixels) {
+  plot(raster)
+  plot(contig.usa, add = T, maxpixels = 500000)
+}
+
+
+usa <- readOGR("data/shapefiles", "states") # get usa shapefile
+white.oak <- raster("raster.files/s802.img")
+red.oak <- raster("raster.files/s833.img")
+usa <- spTransform(usa, CRS(proj4string(white.oak))) # transform shapefile to project with raster
+contig.usa <- subset(usa, STATE_NAME != "Hawaii" & STATE_NAME != "Alaska") # contig. usa shapefile
+minnesota <- subset(usa, STATE_NAME == "Minnesota") 
+mn.wi <- subset(usa, STATE_NAME == "Wisconsin" | STATE_NAME == "Minnesota")
+states <- as.character(unique(contig.usa$STATE_NAME))
+arizona <- subset(contig.usa, STATE_NAME == "Arizona")
+
+#### See raster info
+white.oak
+
+### Example plots
+PlotUSA(white.oak)
+PlotUSA(red.oak)
+PlotUSA(oak)
+
+# Clipping to states
+# https://stackoverflow.com/questions/33617551/how-to-increase-r-processing-speed-dealing-with-large-raster-stacks
+# ^ Some ideas for maybe speeding this up?
+system.time(mn.white.oak2 <- mask(white.oak, minnesota))
+system.time(mn.white.oak2 <- trim(mn.white.oak2, values = NA))
+system.time(mn.white.oak <- mask(crop(white.oak, extent(minnesota)), minnesota))
+vel.white.oak <- velox(white.oak)
+vel.white.oak$crop(minnesota)
+test <- mask(vel.white.oak, minnesota)
+
+plot(wi.white.oak, maxpixels = 1000)
+plot(wisconsin, add = T)
+
+
+system.time(mn.wi.white.oak <- mask(crop(white.oak, extent(mn.wi)), mn.wi))
+plot(mn.wi.white.oak)
+plot(mn.wi, add = T)
+
+### Make the usa shapefile plotable by ggplot
+# Is this really necessary?
+usa@data$id <- rownames(usa@data)
+ggusa <- fortify(usa, region = "id")
+ggusa <- merge(ggusa, usa@data, by = "id")
+
+minnesota <- spTransform(minnesota, CRS(proj4string(mn.white.oak)))
+minnesota@data$id <- rownames(minnesota@data)
+ggmn <- fortify(minnesota, region = "id")
+ggmn <- merge(ggmn, minnesota@data, by = "id")
+
+# Same but for contiguous usa
+contig.usa@data$id <- rownames(contig.usa@data)
+gg.contig.usa <- fortify(contig.usa, region = "id")
+gg.contig.usa <- merge(gg.contig.usa, usa@data, by = "id")
+
+ggplot(ggusa, aes(x = long, y = lat, group = group)) +
+  geom_polygon(fill = NA, color = "black")
+
+ggplot(gg.contig.usa, aes(x = long, y = lat, group = group, fill = "none")) +
+  geom_polygon(fill = NA, color = "black")
+
+
+### Plot with g(g)plot
+# Default number of pixels for gplot is 50,000. Default for plot is 500,000.
+# They take the same amount of [time to plot at 50,000
+# At 100,000 and 200,000 pixels they're essentially the same still.
+# At 5,000,000 pixels, gplot was about 2 seconds faster.
+# And it doesn't like to plot 200,000,000 pixels.
+system.time(plot <- gplot(x = white.oak, maxpixels = 2000) +
+              geom_raster(aes(x = x, y = y, fill = value)) +
+              geom_polygon(data = gg.contig.usa, aes(x = long, y = lat, group = group),
+                           fill = NA, color = "black"))
+system.time(plot(white.oak, maxpixels = 200000000))
+
+plot <- gplot(x = mn.white.oak, maxpixels = 200000) +
+  geom_raster(aes(x = x, y = y, fill = value)) +
+  geom_polygon(data = ggmn, aes(x = long, y = lat, group = group),
+               fill = NA, color = "black") +
+  coord_fixed(1.2) + theme_void()
+plot + 
+  scale_fill_gradientn(colors = c("white", terrain.colors(2)),
+                            name = "Basal Area") 
+  
+plot(white.oak)
+# Summary data
+
+
+### Use cellStats to return a single value for analyzing raster data
+# Depending on which version of the dataset I use, get different mean values...
+# Also, doesn't match the summary value from the db
+
+# https://stackoverflow.com/questions/34064738/fastest-way-to-select-a-valid-range-for-raster-data
+# ^ Possibly useful for reclassifying raster values
+cellStats(white.oak, stat = "mean")
+test <- white.oak
+test[test == 0] <- NA # Converts 0 to NA
+cellStats(test, stat = "mean")
+hist(test) # plots much faster this way
+
+# After reading the paper about these data (A nearest-neighbor imputation 
+# approach to mapping tree species over large areas using forest inventory 
+# plots and moderate resolution raster data), I think I'll be okay to use
+# the mean values from these rasters with a caveat. Essentially, the mean value
+# provided in the summary db are from the actual FIA plots. The mean I'm 
+# getting from these rasters is the based on the values produced from the
+# model that was used to generate this data. These distributions are not
+# actual, but estimated based on a model. They're likely inaccurate at the
+# edges of the range and for rarer species.
+
+# I could probably iterate over each state to get summary stuff per state
+
+### If I sum two rasters where 0 are NA, what happens?
+### Also, plotting two rasters - is this the best way?
+test <- stack(red.oak, white.oak)
+test2 <- sum(test)
+test3 <- calc(test, sum)
+plot(test2)
+plot(test3)
+system.time(red.and.white.oak <- red.oak + white.oak)
+plot(red.and.white.oak)
+plot(contig.usa, add = T)
+plot(red.oak)
+# Just adding the rasters together is faster than using sum (at least for 2 rasters)
+# Also faster than overlay below
+# Using clusterR to sum stacks is NOT faster.
+rw.overlay.oak <- overlay(red.oak, white.oak, fun = function(r1, r2) {return(r1 + r2)})
+plot(rw.overlay.oak)
+beginCluster(6)
+system.time(v <- clusterR(s, calc, args = list(sum)))
+endCluster()
+microbenchmark::microbenchmark(
+  {beginCluster(4)
+  clusterR(test, calc, args = list(sum))
+  endCluster()},
+  red.oak + white.oak
+
+)
+# Using reclassify is much faster than using the index replacement of 0 with NA
+red.oak.NA <- red.oak
+system.time(red.oak.NA[red.oak.NA == 0] <- NA)
+plot(red.oak.NA)
+system.time(red.oak.NA2 <- reclassify(red.oak, c(-0.001, 0.001, NA)))
+plot(red.oak.NA2)
+white.oak.NA <- white.oak
+white.oak.NA[white.oak.NA == 0] <- NA
+
+# I can plot (at least in base plot) and just reclassify within the plot command and add them together
+par(mfrow = c(2, 2))
+PlotUSA(red.oak.NA)
+PlotUSA(white.oak.NA)
+rw.oak.NA <- red.oak.NA + white.oak.NA
+plot((reclassify(red.oak, c(-0.001, 0.001, NA)) + reclassify(white.oak, c(-0.001, 0.001, NA))))
+PlotUSA(rw.oak.NA) # so if I sum with NA, ito only shows where they co-occur. Could be useful
+rw.overlay.NA <- overlay(red.oak.NA, white.oak.NA, fun = function(r1, r2) {return(r1 + r2)})
+PlotUSA(rw.overlay.NA) # same as above. 
+
+test <- overlay(red.oak, white.oak, fun = function(r1, r2) { # this works too for plotting only co-occurance
+  ifelse(r1 == 0 | r2 == 0, 0, r1 + r2)
+})
+PlotUSA(test)
+# If I want to plot whole range of multiple species, I can't remove 0s
+# If I want to show only where they co-occur, should convert 0s to NA
+
+
+### Calculate mean BA by state and nationwide
+test <- wi.white.oak
+test[test == 0] <- NA
+avg.wi.white.oak <- cellStats(test, stat = "mean")
+
+### Genus rasters
+
+
+### Total BA by state - will want to get a script running and let this calculate on its own
+# then create a csv for it.
+db <- read.csv("data/summary_table_all.csv")
+db$id <- paste0("s", db$spp_code, ".img")
+genera <- unique(db$genus_name)
+spp.id <- db$spp_code
+spp.id <- paste0("s", spp.id)
+file.list <- list.files(path = "./data/", pattern = ".img", full.names = T)
+
+# The combined spp files are not done yet, so remove them from file list
+spp.id <- as.character(spp.id)
+split1 <- unlist(strsplit(file.list, "a/"))
+split1 <- split1[seq(from = 2, to = length(split1), by = 2)]
+index <- grep(paste(spp.id, collapse = "|"), split1)
+file.list[index]
+list.rasters <- lapply(file.list[index], raster)
+
+# Make a list of state shape files
+state.shapes <-
+  lapply(states, function(x) {
+    subset(contig.usa, STATE_NAME == x)
+  })
+names(state.shapes) <- states
+
+
+StateStats <- function(rasterfile) {
+  sum.ba <- data.frame(
+    x = rep(names(rasterfile), length(states)),
+    y = states,
+    z = NA
+  )
+  colnames(sum.ba) <- c("spp.id", "state", "tot.ba")
+  print(names(rasterfile))
+  test <- lapply(states, function(x) {})
+  for (i in states) {
+    sum.ba$tot.ba[sum.ba$state == i & sum.ba$spp.id == names(rasterfile)] <-
+      cellStats(mask(crop(rasterfile, extent(state.shapes[[paste(i)]])),
+                     state.shapes[[paste(i)]]), stat = "sum")
+    print(i)
+  }
+  write.csv(sum.ba, paste0("data/", names(rasterfile), "states_tot_ba.csv"))
+  return(sum.ba)
+}
+
+tot.ba <- lapply(raster.subset, StateStats)
+tot.ba <- ldply(tot.ba)
+
+### Database linking file name to species name
+db <- read.csv("data/summary_table_all.csv")
+
+# Can specify one of the plant ids and then use paste0 to get the appropriate file
+input <- 802
+test <- raster(paste0("data/s", input, ".img"))
+
+### For multiple species, proportional bar charts showing basal area (total or average?)
+
+
+
+

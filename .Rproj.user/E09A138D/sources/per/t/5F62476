@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1526478946978.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "682407732",
+    "id" : "5F62476",
+    "lastKnownWriteTime" : 1526483020,
+    "last_content_update" : 1526483020004,
+    "path" : "~/MapFIA/example.R",
+    "project_path" : "example.R",
+    "properties" : {
+        "cursorPosition" : "61,41",
+        "scrollLine" : "38"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

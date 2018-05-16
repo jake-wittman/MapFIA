@@ -117,7 +117,7 @@ ui <- fluidPage(
     mainPanel(
       
       # Tabs
-      tabsetPanel(type = "tabs",
+      tabsetPanel(id = "tabs", type = "tabs",
                   
                   tabPanel("Instructions", 
                            
@@ -131,15 +131,27 @@ ui <- fluidPage(
                            h3("Instructions"),
                            
                            p("1) Select one or more tree species that you would like to map, either by their scientific name or their common name. The app will automatically fill in the other name field."),
+                           
                            p(em("- If you select two or more tree species, you will have to choose whether you want to map their combined distributions or to map only where the selected species co-occur.")),
+                           
                          p(strong(em("- The more species you pick, the longer it will take to produce your desired plot."))),
+                         
                            p("2) Select the states you would like to include in your map."),
+                         
                            p(em("- You can select all 48 contiguous states, or any combination of states. If you want to select states by a region (e.g. 'Midwest'), those options are at the bottom of the drop down menu.")),
+                         
+                           p(strong(em("- The fastest mapping option is 'Contiguous USA'. It will take longer to plot individual states and the more individual states you add, the longer it will take."))),
+                         
                            p("3) Select the number of pixels to plot."),
+                         
                            p(strong(em("- The more pixels you select, the longer it will take to map. It is strongly recommended that you start with a low number of pixels until you have identified the plot you want to produce at a higher quality."))),
+                         
                            p("4) If your plot appears squished or stretched, play with the aspect ratio."),
+                         
                            p("5) Adjust your color-scheme as desired."),
+                         
                            p("6) If you are happy with your map and wish to download it, select the file type, DPI, and dimensions and click the 'Download' button below the map. The same can be done below the proportional bar chart if you wish to download that plot.")
+                         
                          ), # end introduction tab
                   
                   tabPanel("Map", 
@@ -518,6 +530,8 @@ server <- function(input, output, session) {
 
   ### Reactive to map button
   map <- eventReactive(input$go, {
+    # Change tabset
+    
     # Get ID code for each spp
     id <- db$spp_code[db$scientific_name %in% input$scientific.name]
     # Get scientific & common names for select spp
@@ -578,7 +592,12 @@ server <- function(input, output, session) {
     
     
   }) # end map generating code, responsive to go button
-        
+
+  # Change tabset focus on generate map button push
+  observeEvent(input$go, {
+    updateTabsetPanel(session, "tabs",
+                      selected = "Map")
+  })
 
 # map aesthetics ----------------------------------------------------------
 # Reactive customization - will not need to go through the lengthy plot generating process to change how it looks

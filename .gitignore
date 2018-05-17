@@ -1,3 +1,5 @@
 .httr-oauth
 raster.files/
 NArasters/
+.Rhistory
+.Rproj.user

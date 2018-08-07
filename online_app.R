@@ -10,6 +10,7 @@ library(scales)
 library(rasterVis)
 library(viridis)
 library(maptools)
+library(shinyjs)
 
 # Global data 
 db <- fread("data/summary_table_all.csv") # db with name info
@@ -34,7 +35,8 @@ drive_auth(oauth_token = "shiny_app_token.rds")
 
 # UI ----------------------------------------------------------------------
 ui <- fluidPage(
-
+  useShinyjs() #call to use shinyjs functions
+  
   # Application title
   titlePanel(title = NULL),
   
@@ -432,6 +434,7 @@ server <- function(input, output, session) {
 
   ### Reactive to map button
   map <- eventReactive(input$go, {
+    shinyjs::alert("Your map is being generated. Map generation may take several minutes, please be patient.")
     # Get ID code for each spp
     id <- db$spp_code[db$scientific_name %in% input$scientific.name]
     # Get scientific & common names for select spp

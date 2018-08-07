@@ -9,6 +9,7 @@ library(data.table)
 library(scales)
 library(rasterVis)
 library(viridis)
+library(shinyjs)
 
 # Global data 
 db <- fread("data/summary_table_all.csv") # db with name info
@@ -32,14 +33,15 @@ states <- c("Contiguous USA", indv.states, "Northeast", "Mid-Atlantic", "Midwest
 
 # UI ----------------------------------------------------------------------
 ui <- fluidPage(
-
+  useShinyjs(), # Include shinyjs for shinyjs commands
+  
   # Application row
   titlePanel(
     fluidRow(
       column(3, div(img(height = 200, width = 200, src = "aukema_lab_logo.JPG",
                         style = "max-width: 200%; width: 100%, height: auto;"),
                     style = "text-align: center;")),
-      column(9, div(br(), br(), h1("Mapping Tree Distributions"),
+      column(9, div(br(), br(), h1("Arbor Map"),
                     style = "text-align: center;"))
       
       )
@@ -532,6 +534,7 @@ server <- function(input, output, session) {
   map <- eventReactive(input$go, {
     # Change tabset
     
+    shinyjs::alert("Your map is being generated. Map generation may take several minutes, please be patient.")
     # Get ID code for each spp
     id <- db$spp_code[db$scientific_name %in% input$scientific.name]
     # Get scientific & common names for select spp
